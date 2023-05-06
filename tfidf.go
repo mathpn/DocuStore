@@ -20,6 +20,7 @@ func check(e error) {
 type DocSummary struct {
 	DocID     string
 	TermFreqs map[string]float64 // term frequency
+	Norm      float64            // norm of TermFreqs vector
 }
 
 type SimResult struct {
@@ -28,10 +29,11 @@ type SimResult struct {
 }
 
 func NewDocSummary(text string) *DocSummary {
-	termFreqs := getTermFrequency(text)
+	termFreqs, norm := getTermFrequency(text)
 	return &DocSummary{
 		DocID:     hashDocument(text),
 		TermFreqs: termFreqs,
+		Norm:      norm,
 	}
 }
 
@@ -43,7 +45,7 @@ func tokenize(text string) []string {
 	return tokens
 }
 
-func getTermFrequency(text string) map[string]float64 {
+func getTermFrequency(text string) (map[string]float64, float64) {
 	tokens := tokenize(text)
 	termCounts := make(map[string]int)
 	nTokens := float64(len(tokens))
@@ -51,10 +53,14 @@ func getTermFrequency(text string) map[string]float64 {
 		termCounts[token]++
 	}
 	termFreqs := make(map[string]float64)
+	norm := 0.0
 	for token, count := range termCounts {
-		termFreqs[token] = float64(count) / nTokens
+		freq := float64(count) / nTokens
+		norm += freq * freq
+		termFreqs[token] = freq
 	}
-	return termFreqs
+	norm = math.Sqrt(norm)
+	return termFreqs, norm
 }
 
 type TFIDF struct {
@@ -92,17 +98,13 @@ func (tfidf *TFIDF) AddDocuments(DocSummaries ...*DocSummary) {
 }
 
 func (tfidf *TFIDF) Similarity(text string) []*SimResult {
-	termFreqs := getTermFrequency(text)
+	termFreqs, queryNorm := getTermFrequency(text)
 	tfidf.calculateIDF()
 	scores := make([]float64, tfidf.nDocs)
-	refNorms := make([]float64, tfidf.nDocs)
-	var queryNorm float64 = 0.0
 	for token, queryCount := range termFreqs {
 		for i, DocSummary := range tfidf.DocSummaries {
 			refCount := DocSummary.TermFreqs[token]
 			scores[i] += queryCount * refCount
-			refNorms[i] += refCount * refCount
-			queryNorm += queryCount * queryCount
 		}
 	}
 	result := make([]*SimResult, tfidf.nDocs)
@@ -110,7 +112,7 @@ func (tfidf *TFIDF) Similarity(text string) []*SimResult {
 	for i := 0; i < len(scores); i++ {
 		result[i] = &SimResult{
 			tfidf.DocSummaries[i].DocID,
-			scores[i] / (queryNorm * math.Sqrt(refNorms[i])),
+			scores[i] / (queryNorm*tfidf.DocSummaries[i].Norm + 1e-8),
 		}
 	}
 	sort.Slice(result, func(i, j int) bool {
