@@ -1,16 +1,29 @@
 package main
 
 import (
-	"encoding/json"
-	"io"
 	"os"
 	"sync"
 )
 
 var lock sync.Mutex
 
-// Save saves a representation of v to the file at path.
-func Save(path string, v interface{}) error {
+func SaveText(path string, text string) {
+	lock.Lock()
+	defer lock.Unlock()
+	err := os.WriteFile(path, []byte(text), 0644)
+	check(err) // TODO improve
+}
+
+func LoadText(path string) string {
+	lock.Lock()
+	defer lock.Unlock()
+	content, err := os.ReadFile(path)
+	check(err) // TODO improve
+	return string(content)
+}
+
+// SaveStruct saves a representation of v to the file at path.
+func SaveStruct(path string, v interface{}, marshal func(interface{}) ([]byte, error)) error {
 	lock.Lock()
 	defer lock.Unlock()
 	f, err := os.Create(path)
@@ -18,7 +31,7 @@ func Save(path string, v interface{}) error {
 		return err
 	}
 	defer f.Close()
-	r, err := json.Marshal(v)
+	r, err := marshal(v)
 	if err != nil {
 		return err
 	}
@@ -26,23 +39,13 @@ func Save(path string, v interface{}) error {
 	return err
 }
 
-// Load loads the file at path into v.
-// Use os.IsNotExist() to see if the returned error is due
-// to the file being missing.
-func Load(path string, v interface{}) error {
+// LoadStruct loads the file at path into v.
+func LoadStruct(path string, v interface{}, unmarshal func([]byte, interface{}) error) error {
 	lock.Lock()
 	defer lock.Unlock()
-	f, err := os.Open(path)
+	bytes, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	return Unmarshal(f, v)
-}
-
-// Unmarshal is a function that unmarshals the data from the
-// reader into the specified value.
-// By default, it uses the JSON unmarshaller.
-var Unmarshal = func(r io.Reader, v interface{}) error {
-	return json.NewDecoder(r).Decode(v)
+	return unmarshal(bytes, v)
 }
