@@ -1,14 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"math"
-	"os"
 	"regexp"
 	"sort"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/mozillazg/go-unidecode"
 )
 
@@ -33,7 +30,7 @@ type SimResult struct {
 func NewDocSummary(text string) *DocSummary {
 	termFreqs := getTermFrequency(text)
 	return &DocSummary{
-		DocID:     uuid.New().String(),
+		DocID:     hashDocument(text),
 		TermFreqs: termFreqs,
 	}
 }
@@ -120,24 +117,4 @@ func (tfidf *TFIDF) Similarity(text string) []*SimResult {
 		return result[i].Score > result[j].Score // descending order
 	})
 	return result
-}
-
-func main() {
-	text, err := os.ReadFile("./text.txt")
-	check(err)
-	text2, err := os.ReadFile("./text2.txt")
-	check(err)
-
-	vector := NewDocSummary(string(text))
-	vector2 := NewDocSummary(string(text2))
-
-	tfidf := NewTFIDF()
-	tfidf.AddDocuments(vector, vector2)
-	scores := tfidf.Similarity("lorem ipsum")
-	fmt.Printf("%+v\n", scores[0])
-
-	Save("/tmp/test.json", tfidf.DocSummaries[0])
-	var v DocSummary
-	Load("/tmp/test.json", &v)
-	fmt.Printf("%+v\n", v)
 }
