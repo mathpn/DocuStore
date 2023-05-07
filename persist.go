@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/gob"
+	"log"
 	"os"
 	"sync"
 )
@@ -23,7 +25,7 @@ func LoadText(path string) string {
 }
 
 // SaveStruct saves a representation of v to the file at path.
-func SaveStruct(path string, v interface{}, marshal func(interface{}) ([]byte, error)) error {
+func SaveStruct(path string, v interface{}) error {
 	lock.Lock()
 	defer lock.Unlock()
 	f, err := os.Create(path)
@@ -31,21 +33,23 @@ func SaveStruct(path string, v interface{}, marshal func(interface{}) ([]byte, e
 		return err
 	}
 	defer f.Close()
-	r, err := marshal(v)
+	enc := gob.NewEncoder(f)
+	err = enc.Encode(v)
 	if err != nil {
-		return err
+		log.Fatal("encode error:", err)
 	}
-	_, err = f.Write(r)
 	return err
 }
 
 // LoadStruct loads the file at path into v.
-func LoadStruct(path string, v interface{}, unmarshal func([]byte, interface{}) error) error {
+func LoadStruct(path string, v interface{}) error {
 	lock.Lock()
 	defer lock.Unlock()
-	bytes, err := os.ReadFile(path)
+	f, err := os.Open(path)
 	if err != nil {
 		return err
 	}
-	return unmarshal(bytes, v)
+	defer f.Close()
+	dec := gob.NewDecoder(f)
+	return dec.Decode(v)
 }
