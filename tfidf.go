@@ -19,19 +19,22 @@ func check(e error) {
 
 type DocSummary struct {
 	DocID     string
+	Title     string
 	TermFreqs map[string]float64 // term frequency
 	Norm      float64            // norm of TermFreqs vector
 }
 
 type SimResult struct {
 	DocID string
+	Title string
 	Score float64
 }
 
-func NewDocSummary(text string) *DocSummary {
+func NewDocSummary(text string, identifier string, title string) *DocSummary {
 	termFreqs, norm := getTermFrequency(text)
 	return &DocSummary{
-		DocID:     hashDocument(text),
+		DocID:     hashDocument(identifier),
+		Title:     title,
 		TermFreqs: termFreqs,
 		Norm:      norm,
 	}
@@ -112,6 +115,7 @@ func (tfidf *TFIDF) Similarity(text string) []*SimResult {
 	for i := 0; i < len(scores); i++ {
 		result[i] = &SimResult{
 			tfidf.DocSummaries[i].DocID,
+			tfidf.DocSummaries[i].Title,
 			scores[i] / (queryNorm*tfidf.DocSummaries[i].Norm + 1e-8),
 		}
 	}
