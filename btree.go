@@ -3,7 +3,15 @@ package main
 import (
 	"fmt"
 	"io"
+	"sync"
 )
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
 
 type InvertedIndex struct {
 	Token  string
@@ -23,9 +31,93 @@ type docToken struct {
 }
 
 type BinaryNode struct {
-	Left  *BinaryNode
-	Right *BinaryNode
-	Data  *InvertedIndex
+	Left   *BinaryNode
+	Right  *BinaryNode
+	Data   *InvertedIndex
+	height int
+}
+
+func (n *BinaryNode) Height() int {
+	if n == nil {
+		return 0
+	}
+	return n.height
+}
+
+func (n *BinaryNode) Bal() int {
+	return n.Right.Height() - n.Left.Height()
+}
+
+func (n *BinaryNode) insert(Data *docToken) *BinaryNode {
+	if n == nil {
+		// fmt.Println("creating node: " + Data.token)
+		return &BinaryNode{
+			Data:   NewInvIndex(Data.token, Data.docID),
+			height: 1,
+		}
+	}
+	if Data.token == n.Data.Token {
+		n.Data.DocIDs = append(n.Data.DocIDs, Data.docID)
+		// fmt.Println("same token: " + Data.token)
+		return n
+	}
+	if Data.token < n.Data.Token {
+		n.Left = n.Left.insert(Data)
+	} else {
+		n.Right = n.Right.insert(Data)
+	}
+	n.height = max(n.Left.Height(), n.Right.Height()) + 1
+	return n.rebalance()
+}
+
+func (n *BinaryNode) rotateLeft() *BinaryNode {
+	// fmt.Println("rotateLeft " + n.Data.Token)
+	r := n.Right
+	n.Right = r.Left
+	r.Left = n
+
+	n.height = max(n.Left.Height(), n.Right.Height()) + 1
+	r.height = max(r.Left.Height(), r.Right.Height()) + 1
+	return r
+}
+
+func (n *BinaryNode) rotateRight() *BinaryNode {
+	// fmt.Println("rotateRight " + n.Data.Token)
+	l := n.Left
+	n.Left = l.Right
+	l.Right = n
+	n.height = max(n.Left.Height(), n.Right.Height()) + 1
+	l.height = max(l.Left.Height(), l.Right.Height()) + 1
+	return l
+}
+
+func (n *BinaryNode) rotateRightLeft() *BinaryNode {
+	n.Right = n.Right.rotateRight()
+	n = n.rotateLeft()
+	n.height = max(n.Left.Height(), n.Right.Height()) + 1
+	return n
+}
+
+func (n *BinaryNode) rotateLeftRight() *BinaryNode {
+	n.Left = n.Left.rotateLeft()
+	n = n.rotateRight()
+	n.height = max(n.Left.Height(), n.Right.Height()) + 1
+	return n
+}
+
+func (n *BinaryNode) rebalance() *BinaryNode {
+	// fmt.Println("rebalance " + n.Data.Token)
+	switch {
+	case n.Bal() < -1 && n.Left.Bal() == -1:
+		return n.rotateRight()
+	case n.Bal() > 1 && n.Right.Bal() == 1:
+		return n.rotateLeft()
+	case n.Bal() < -1 && n.Left.Bal() == 1:
+		return n.rotateLeftRight()
+	case n.Bal() > 1 && n.Right.Bal() == -1:
+		return n.rotateRightLeft()
+	}
+	return n
 }
 
 type BinaryTree struct {
@@ -39,33 +131,26 @@ func (t *BinaryTree) InsertDoc(doc *DocSummary) {
 	}
 }
 
-func (t *BinaryTree) insert(Data *docToken) *BinaryTree {
+// tree rebalancing code adapted from https://appliedgo.net/balancedtree/
+
+func (t *BinaryTree) insert(Data *docToken) {
 	if t.Root == nil {
-		t.Root = &BinaryNode{Data: NewInvIndex(Data.token, Data.docID), Left: nil, Right: nil}
+		t.Root = &BinaryNode{
+			Data: NewInvIndex(Data.token, Data.docID),
+		}
 	} else {
-		t.Root.insert(Data)
+		t.Root = t.Root.insert(Data)
 	}
-	return t
+	if t.Root.Bal() < -1 || t.Root.Bal() > 1 {
+		t.rebalance()
+	}
 }
 
-func (n *BinaryNode) insert(Data *docToken) {
-	if n == nil {
+func (t *BinaryTree) rebalance() {
+	if t == nil || t.Root == nil {
 		return
-	} else if Data.token < n.Data.Token {
-		if n.Left == nil {
-			n.Left = &BinaryNode{Data: NewInvIndex(Data.token, Data.docID), Left: nil, Right: nil}
-		} else {
-			n.Left.insert(Data)
-		}
-	} else if Data.token > n.Data.Token {
-		if n.Right == nil {
-			n.Right = &BinaryNode{Data: NewInvIndex(Data.token, Data.docID), Left: nil, Right: nil}
-		} else {
-			n.Right.insert(Data)
-		}
-	} else {
-		n.Data.DocIDs = append(n.Data.DocIDs, Data.docID)
 	}
+	t.Root = t.Root.rebalance()
 }
 
 func (t *BinaryTree) Search(token string) *InvertedIndex {
@@ -73,6 +158,42 @@ func (t *BinaryTree) Search(token string) *InvertedIndex {
 		return t.Root.Data
 	}
 	return t.Root.search(token)
+}
+
+func (t *BinaryTree) SearchDoc(tokens []string) []string {
+	results := make([]*InvertedIndex, len(tokens))
+	var wg sync.WaitGroup
+	for i := 0; i < len(tokens); i++ {
+		wg.Add(1)
+		go func(i int, token string) {
+			defer wg.Done()
+			res := t.Search(token)
+			if res != nil {
+				results[i] = res
+			}
+		}(i, tokens[i])
+	}
+	wg.Wait()
+	docMap := make(map[string]bool)
+	for i := 0; i < len(results); i++ {
+		invInd := results[i]
+		if invInd != nil {
+			for _, docID := range invInd.DocIDs {
+				docMap[docID] = true
+			}
+		}
+	}
+	out := make([]string, len(docMap))
+	i := 0
+	for docID := range docMap {
+		out[i] = docID
+		i++
+	}
+	// fmt.Printf("%+v\n", tokens)
+	// fmt.Printf("%+v\n", results)
+	// fmt.Printf("%+v\n", docMap)
+	// fmt.Printf("%+v\n", out)
+	return out
 }
 
 func (n *BinaryNode) search(token string) *InvertedIndex {
@@ -85,18 +206,16 @@ func (n *BinaryNode) search(token string) *InvertedIndex {
 				token,
 				make([]string, 0),
 			}
-		} else {
-			return n.Left.search(token)
 		}
+		return n.Left.search(token)
 	} else {
 		if n.Right == nil {
 			return &InvertedIndex{
 				token,
 				make([]string, 0),
 			}
-		} else {
-			return n.Right.search(token)
 		}
+		return n.Right.search(token)
 	}
 }
 
