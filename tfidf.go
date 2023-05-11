@@ -40,7 +40,7 @@ func NewDocSummary(text string, identifier string, title string) *DocSummary {
 	}
 }
 
-func tokenize(text string) []string {
+func Tokenize(text string) []string {
 	text = asciiRegex.ReplaceAllString(text, "")
 	text = strings.ToLower(text)
 	text = unidecode.Unidecode(text)
@@ -49,7 +49,7 @@ func tokenize(text string) []string {
 }
 
 func getTermFrequency(text string) (map[string]float64, float64) {
-	tokens := tokenize(text)
+	tokens := Tokenize(text)
 	termCounts := make(map[string]int)
 	nTokens := float64(len(tokens))
 	for _, token := range tokens {
