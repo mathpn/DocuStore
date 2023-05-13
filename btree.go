@@ -175,19 +175,17 @@ func (t *BinaryTree) SearchDoc(tokens []string) []string {
 	}
 	wg.Wait()
 	docMap := make(map[string]bool)
+	out := make([]string, 0)
 	for i := 0; i < len(results); i++ {
 		invInd := results[i]
 		if invInd != nil {
 			for _, docID := range invInd.DocIDs {
-				docMap[docID] = true
+				if _, val := docMap[docID]; !val {
+					docMap[docID] = true
+					out = append(out, docID)
+				}
 			}
 		}
-	}
-	out := make([]string, len(docMap))
-	i := 0
-	for docID := range docMap {
-		out[i] = docID
-		i++
 	}
 	// fmt.Printf("%+v\n", tokens)
 	// fmt.Printf("%+v\n", results)

@@ -66,57 +66,53 @@ func getTermFrequency(text string) (map[string]float64, float64) {
 	return termFreqs, norm
 }
 
-type TFIDF struct {
-	DocSummaries []*DocSummary
-	docCounts    map[string]int     // number of documents with word
-	idf          map[string]float64 // log of inverse document frequency
-	nDocs        int                // number of documents
+type DocCounter struct {
+	nDocs     int
+	DocCounts map[string]int     // number of documents with word
+	idf       map[string]float64 // log of inverse document frequency
 }
 
-func NewTFIDF() *TFIDF {
-	var DocSummaries []*DocSummary
-	return &TFIDF{
-		DocSummaries,
+func NewDocCounter() *DocCounter {
+	return &DocCounter{
+		0,
 		make(map[string]int),
 		make(map[string]float64),
-		0,
 	}
 }
 
-func (tfidf *TFIDF) calculateIDF() {
-	nDocs := float64(len(tfidf.DocSummaries))
-	for token, count := range tfidf.docCounts {
-		tfidf.idf[token] = math.Log(nDocs / float64(count))
-	}
-}
-
-func (tfidf *TFIDF) AddDocuments(DocSummaries ...*DocSummary) {
+func (d *DocCounter) AddDocuments(DocSummaries ...*DocSummary) {
 	for i := 0; i < len(DocSummaries); i++ {
-		tfidf.nDocs++
-		tfidf.DocSummaries = append(tfidf.DocSummaries, DocSummaries[i])
+		d.nDocs++
+		// d.DocSummaries = append(d.DocSummaries, DocSummaries[i])
 		for token := range DocSummaries[i].TermFreqs {
-			tfidf.docCounts[token]++
+			d.DocCounts[token]++
 		}
 	}
 }
 
-func (tfidf *TFIDF) Similarity(text string) []*SimResult {
+func (d *DocCounter) calculateIDF() {
+	for token, count := range d.DocCounts {
+		d.idf[token] = math.Log(float64(d.nDocs) / float64(count))
+	}
+}
+
+func TFIDFSimilarity(text string, c *DocCounter, docs ...*DocSummary) []*SimResult {
 	termFreqs, queryNorm := getTermFrequency(text)
-	tfidf.calculateIDF()
-	scores := make([]float64, tfidf.nDocs)
-	for token, queryCount := range termFreqs {
-		for i, DocSummary := range tfidf.DocSummaries {
-			refCount := DocSummary.TermFreqs[token]
+	c.calculateIDF()
+	scores := make([]float64, len(docs))
+	for i, docSummary := range docs {
+		for token, queryCount := range termFreqs {
+			refCount := docSummary.TermFreqs[token]
 			scores[i] += queryCount * refCount
 		}
 	}
-	result := make([]*SimResult, tfidf.nDocs)
+	result := make([]*SimResult, len(docs))
 	queryNorm = math.Sqrt(queryNorm)
 	for i := 0; i < len(scores); i++ {
 		result[i] = &SimResult{
-			tfidf.DocSummaries[i].DocID,
-			tfidf.DocSummaries[i].Title,
-			scores[i] / (queryNorm*tfidf.DocSummaries[i].Norm + 1e-8),
+			docs[i].DocID,
+			docs[i].Title,
+			scores[i] / (queryNorm*docs[i].Norm + 1e-8),
 		}
 	}
 	sort.Slice(result, func(i, j int) bool {

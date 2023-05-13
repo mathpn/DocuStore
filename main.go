@@ -4,9 +4,11 @@ import (
 	"encoding/gob"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime/pprof"
 )
 
 type RuntimeState struct {
@@ -14,11 +16,13 @@ type RuntimeState struct {
 	summaryFolder string
 	rawFolder     string
 	index         *BinaryTree
+	docCounter    *DocCounter
 }
 
 func NewRuntimeState() *RuntimeState {
 	gob.Register(BinaryTree{})
 	gob.Register(DocSummary{})
+	gob.Register(DocCounter{})
 	workDir, err := os.Getwd()
 	check(err)
 	dataFolder := filepath.Join(workDir, "data")
@@ -41,11 +45,25 @@ func NewRuntimeState() *RuntimeState {
 			index = BinaryTree{nil}
 		}
 	}
+
+	// load or create docCounter
+	dcPath := filepath.Join(dataFolder, "docCounter.gob")
+	docCounter := NewDocCounter()
+	if _, err := os.Stat(dcPath); os.IsNotExist(err) {
+		fmt.Println("DocCounter not found")
+	} else {
+		err := LoadStruct(dcPath, &docCounter)
+		if err != nil {
+			fmt.Println("Error reading index:", err)
+		}
+	}
+
 	return &RuntimeState{
 		dataFolder,
 		summaryFolder,
 		rawFolder,
 		&index,
+		docCounter,
 	}
 }
 
@@ -103,10 +121,14 @@ func addDocument(text string, identifier string, title string, state *RuntimeSta
 		filepath.Join(state.rawFolder, docSummary.DocID+".txt"),
 		text,
 	)
+	SaveStruct(
+		filepath.Join(state.dataFolder, "docCounter.gob"),
+		state.docCounter,
+	)
 }
 
-func queryDocument(text string, state *RuntimeState) {
-	PrintTree(os.Stdout, state.index.Root, 0, 'M')
+func queryDocument(text string, state *RuntimeState) []*SimResult {
+	// PrintTree(os.Stdout, state.index.Root, 0, 'M')
 	tokens := Tokenize(text)
 	docIDs := state.index.SearchDoc(tokens)
 	docSummaries := make([]*DocSummary, len(docIDs))
@@ -115,17 +137,9 @@ func queryDocument(text string, state *RuntimeState) {
 		LoadStruct(fpath, &docSummaries[i])
 	}
 
-	// files, err := os.ReadDir(state.summaryFolder)
-	// docSummaries := make([]*DocSummary, len(files))
-	// check(err)
-	// for i, file := range files {
-	// 	fpath := filepath.Join(state.summaryFolder, file.Name())
-	// 	LoadStruct(fpath, &docSummaries[i])
-	// }
-	tfidf := NewTFIDF()
-	tfidf.AddDocuments(docSummaries...)
-	similarities := tfidf.Similarity(text)
+	similarities := TFIDFSimilarity(text, state.docCounter, docSummaries...)
 	printSimilarities(similarities, state.rawFolder)
+	return similarities
 }
 
 func printSimilarities(sims []*SimResult, rawFolder string) {
