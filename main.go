@@ -1,70 +1,129 @@
 package main
 
 import (
+	"context"
+	"database/sql"
 	"encoding/gob"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime/pprof"
 )
 
 type RuntimeState struct {
-	dataFolder    string
-	summaryFolder string
-	rawFolder     string
-	index         *BinaryTree
-	docCounter    *DocCounter
+	dataFolder string
+	rawFolder  string
+	db         *sql.DB
+	index      *BinaryTree
+	docCounter *DocCounter
 }
 
 func NewRuntimeState() *RuntimeState {
-	gob.Register(BinaryTree{})
 	gob.Register(DocSummary{})
-	gob.Register(DocCounter{})
 	workDir, err := os.Getwd()
 	check(err)
 	dataFolder := filepath.Join(workDir, "data")
-	summaryFolder := filepath.Join(dataFolder, "summary")
 	rawFolder := filepath.Join(dataFolder, "raw")
 	err = os.MkdirAll(rawFolder, 0755)
 	check(err)
-	err = os.MkdirAll(summaryFolder, 0755)
+
+	db, err := sql.Open("sqlite3", filepath.Join(dataFolder, "storage.db"))
 	check(err)
-
-	// load or create index
-	indexPath := filepath.Join(dataFolder, "index.gob")
-	var index BinaryTree
-	if _, err := os.Stat(indexPath); os.IsNotExist(err) {
-		fmt.Println("Index not found")
-	} else {
-		err := LoadStruct(indexPath, &index)
-		if err != nil {
-			fmt.Println("Error reading index:", err)
-			index = BinaryTree{nil}
-		}
-	}
-
-	// load or create docCounter
-	dcPath := filepath.Join(dataFolder, "docCounter.gob")
-	docCounter := NewDocCounter()
-	if _, err := os.Stat(dcPath); os.IsNotExist(err) {
-		fmt.Println("DocCounter not found")
-	} else {
-		err := LoadStruct(dcPath, &docCounter)
-		if err != nil {
-			fmt.Println("Error reading index:", err)
-		}
-	}
+	err = createTables(db)
+	check(err)
 
 	return &RuntimeState{
 		dataFolder,
-		summaryFolder,
 		rawFolder,
-		&index,
-		docCounter,
+		db,
+		nil,
+		nil,
 	}
+}
+
+// Load or create BTree index
+func (s *RuntimeState) loadIndex() error {
+	gob.Register(BinaryTree{})
+	indexPath := filepath.Join(s.dataFolder, "index.gob")
+
+	index := &BinaryTree{nil}
+	err := LoadStruct(indexPath, &index)
+	if err != nil {
+		fmt.Println("Error reading index:", err, " - attempting to recover index")
+		index, err = s.recoverIndex()
+		if err != nil {
+			fmt.Println("Index recovery failed, all documents are lost!", err)
+			return err
+		}
+		fmt.Println("BTree index succesfully recovered")
+	}
+	s.index = index
+	return nil
+}
+
+func (s *RuntimeState) recoverIndex() (*BinaryTree, error) {
+	docIDs, err := ListDocuments(s.db)
+	if err != nil {
+		return nil, err
+	}
+	btree := &BinaryTree{nil}
+	for _, docID := range docIDs {
+		doc, err := LoadDocument(s.db, docID)
+		if err != nil {
+			return nil, err
+		}
+		btree.InsertDoc(doc)
+	}
+	indexPath := filepath.Join(s.dataFolder, "index.gob")
+	err = SaveStruct(indexPath, btree)
+	if err != nil {
+		return nil, err
+	}
+	return btree, nil
+}
+
+// Load or create DocCounter
+func (s *RuntimeState) loadCounter() error {
+	gob.Register(DocCounter{})
+	dcPath := filepath.Join(s.dataFolder, "docCounter.gob")
+
+	docCounter := NewDocCounter()
+	err := LoadStruct(dcPath, docCounter)
+	if err != nil {
+		fmt.Println("Error reading docCounter:", err, " - attempting to recover")
+		docCounter, err = s.recoverDocCounter()
+		if err != nil {
+			fmt.Println("DocCounter recovery failed, all documents are lost!")
+			return err
+		}
+		fmt.Println("docCounter succesfully recovered")
+	}
+	s.docCounter = docCounter
+	return nil
+}
+
+func (s *RuntimeState) recoverDocCounter() (*DocCounter, error) {
+	docIDs, err := ListDocuments(s.db)
+	if err != nil {
+		return nil, err
+	}
+
+	docCounter := NewDocCounter()
+	for _, docID := range docIDs {
+		doc, err := LoadDocument(s.db, docID)
+		if err != nil {
+			return nil, err
+		}
+		docCounter.AddDocuments(doc)
+	}
+
+	dcPath := filepath.Join(s.dataFolder, "docCounter.gob")
+	err = SaveStruct(dcPath, docCounter)
+	if err != nil {
+		return nil, err
+	}
+	return docCounter, nil
 }
 
 var newLineRegex = regexp.MustCompile(`\s`)
@@ -103,39 +162,43 @@ func fileExists(path string) bool {
 
 func addDocument(text string, identifier string, title string, state *RuntimeState) {
 	docSummary := NewDocSummary(text, identifier, title)
-	summaryPath := filepath.Join(state.summaryFolder, docSummary.DocID+".gob")
-	if fileExists(summaryPath) {
+	rows, err := InsertDocument(state.db, docSummary)
+	if err != nil {
+		panic(err)
+	}
+	if rows == 0 {
 		fmt.Println("Document is already in the collection")
 		return
 	}
+
 	state.index.InsertDoc(docSummary)
-	SaveStruct(
-		filepath.Join(state.summaryFolder, docSummary.DocID+".gob"),
-		docSummary,
-	)
-	SaveStruct(
+	state.docCounter.AddDocuments(docSummary)
+
+	err = SaveStruct(
 		filepath.Join(state.dataFolder, "index.gob"),
 		state.index,
 	)
-	SaveText(
+	check(err)
+
+	err = SaveText(
 		filepath.Join(state.rawFolder, docSummary.DocID+".txt"),
 		text,
 	)
-	SaveStruct(
+	check(err)
+
+	err = SaveStruct(
 		filepath.Join(state.dataFolder, "docCounter.gob"),
 		state.docCounter,
 	)
+	check(err)
 }
 
 func queryDocument(text string, state *RuntimeState) []*SimResult {
 	// PrintTree(os.Stdout, state.index.Root, 0, 'M')
 	tokens := Tokenize(text)
 	docIDs := state.index.SearchDoc(tokens)
-	docSummaries := make([]*DocSummary, len(docIDs))
-	for i, docID := range docIDs {
-		fpath := filepath.Join(state.summaryFolder, docID+".gob")
-		LoadStruct(fpath, &docSummaries[i])
-	}
+	docSummaries, err := LoadDocuments(context.Background(), state.db, docIDs...)
+	check(err)
 
 	similarities := TFIDFSimilarity(text, state.docCounter, docSummaries...)
 	printSimilarities(similarities, state.rawFolder)
@@ -165,6 +228,10 @@ func main() {
 	}
 
 	state := NewRuntimeState()
+	err := state.loadIndex()
+	check(err)
+	err = state.loadCounter()
+	check(err)
 
 	cmd := flag.Arg(0)
 	switch cmd {
@@ -188,7 +255,10 @@ func main() {
 			fmt.Println("You must provide a query string.")
 			return
 		}
-		queryDocument(query, state)
+		// XXX loop for profiling only
+		for i := 0; i < 10; i++ {
+			queryDocument(query, state)
+		}
 	default:
 		fmt.Println("Valid commands: add, query")
 	}
