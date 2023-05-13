@@ -9,11 +9,11 @@ import (
 
 var lock sync.Mutex
 
-func SaveText(path string, text string) {
+func SaveText(path string, text string) error {
 	lock.Lock()
 	defer lock.Unlock()
 	err := os.WriteFile(path, []byte(text), 0644)
-	check(err) // TODO improve
+	return err
 }
 
 func LoadText(path string) string {
