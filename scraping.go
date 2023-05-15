@@ -16,7 +16,7 @@ var URLRegex = regexp.MustCompile(`htt(p|ps)://(.*)(\s|$)`)
 
 func ScrapeText(url string) (string, string) {
 	buffer := bytes.NewBufferString("")
-	response, err := http.Get(url)
+	response, err := http.Get(strings.TrimSpace(url))
 	if err != nil {
 		log.Fatal(err)
 	}

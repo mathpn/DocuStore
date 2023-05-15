@@ -22,3 +22,8 @@ go.work
 
 # Data folder
 data/
+
+# Wails stuff
+build/bin
+node_modules
+frontend/dist

@@ -11,32 +11,50 @@ import (
 
 var asciiRegex = regexp.MustCompile(`[^a-zA-Z0-9\s]`)
 
-func check(e error) {
-	if e != nil {
-		panic(e)
+type DocType int
+
+const (
+	URL DocType = iota
+	Text
+)
+
+func (t DocType) String() string {
+	switch t {
+	case URL:
+		return "URL"
+	case Text:
+		return "Text"
+	default:
+		return "unknown"
 	}
 }
 
 type DocSummary struct {
-	DocID     string
-	Title     string
-	TermFreqs map[string]float64 // term frequency
-	Norm      float64            // norm of TermFreqs vector
+	DocID      string
+	Title      string
+	Type       DocType
+	Identifier string
+	TermFreqs  map[string]float64 // term frequency
+	Norm       float64            // norm of TermFreqs vector
 }
 
 type SimResult struct {
-	DocID string
-	Title string
-	Score float64
+	DocID      string
+	Title      string
+	Type       DocType
+	Identifier string
+	Score      float64
 }
 
-func NewDocSummary(text string, identifier string, title string) *DocSummary {
+func NewDocSummary(text string, identifier string, title string, docType DocType) *DocSummary {
 	termFreqs, norm := getTermFrequency(text)
 	return &DocSummary{
-		DocID:     hashDocument(identifier),
-		Title:     title,
-		TermFreqs: termFreqs,
-		Norm:      norm,
+		DocID:      hashDocument(identifier),
+		Title:      title,
+		Identifier: identifier,
+		Type:       docType,
+		TermFreqs:  termFreqs,
+		Norm:       norm,
 	}
 }
 
@@ -112,6 +130,8 @@ func TFIDFSimilarity(text string, c *DocCounter, docs ...*DocSummary) []*SimResu
 		result[i] = &SimResult{
 			docs[i].DocID,
 			docs[i].Title,
+			docs[i].Type,
+			docs[i].Identifier,
 			scores[i] / (queryNorm*docs[i].Norm + 1e-8),
 		}
 	}
