@@ -1,32 +1,12 @@
 <!DOCTYPE html>
-<html>
-<head>
-    <title>Search Engine</title>
-</head>
-<body>
-    <script src="./src/main.js" type="module"></script>
-    <div class="container">
-        <div id="register-popup">
-            <div id="register-popup-content">
-                Registering...
-            </div>
-            <div id="register-popup-loading">
-                <div class="loader"></div>
-            </div>
-        </div>
-        <div id="success-popup">
-            <p>Registration successful!</p>
-            <div id="slide-bar"></div>
-        </div>
-        <div class="search-bar">
-            <div class="text-input" id="input-box" contenteditable="true" data-placeholder="Please enter a URL or raw text"></div>
-            <div id="char-count"></div>
-            <button id="content-button" class="search-button">Register</button>
-        </div>
-        <div class="search-bar">
-            <input type="text" class="search-input" id="search-box" placeholder="Search" />
-            <button id="search-button" class="search-button">Search</button>
-        </div>
-        <div class="search-results" id="search-results"></div>
-</body>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="/favicon.ico">
+    <title>DocuStore</title>
+  </head>
+  <body>
+    <div id="app" class="container"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
 </html>

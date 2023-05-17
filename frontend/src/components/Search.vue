@@ -1,17 +1,62 @@
-body {
-    font-family: "Heebo", sans-serif;
-    margin: 0;
-    padding: 0;
-    background-color: #f7f7f7;
+<template>
+    <div class="container">
+        <div class="search-bar">
+            <textarea v-on:keydown.enter="addInput" type="text" class="text-input" ref="input-box" id="input-box" rows="1" @input="resizeTextarea" placeholder="Please enter a URL or raw text" v-model="input"/>
+            <div id="char-count"></div>
+            <button id="content-button" class="search-button" v-on:click="addInput">Register</button>
+        </div>
+        <div class="search-bar">
+            <input v-debounce:300ms="doSearch" v-on:keydown.enter="doSearch" type="text" class="search-input" id="search-box" placeholder="Search" v-model="searchField"/>
+        </div>
+        <div class="search-results" id="search-results" v-for="result in searchResults">
+            <div class="search-result">
+                <span class="search-result-title">{{ result.Title }}</span>
+                <button class="search-result-button" v-on:click="openDocument(result)">Open</button>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script>
+import {Search} from '../../wailsjs/go/main/App';
+import {AddContent} from '../../wailsjs/go/main/App';
+import { vue3Debounce } from 'vue-debounce'
+import {BrowserOpenURL} from "../../wailsjs/runtime";
+
+export default {
+    data() {
+        return {
+            input: '',
+            searchField: '',
+            searchResults: [],
+        }
+    },
+    methods: {
+        doSearch() {
+            console.log("searching", this.searchResults);
+            Search(this.searchField).then(results => this.searchResults = results);
+        },
+        addInput() {
+            console.log("adding", this.input);
+            AddContent(this.input)
+        },
+        resizeTextarea(e) {
+            let element = this.$refs["input-box"];
+            element.style.height = "18px";
+            element.style.height = element.scrollHeight + "px";
+        },
+        openDocument(document) {
+            // TODO open text files as markdown
+            BrowserOpenURL(document.Identifier);
+        }
+    },
+    directives: {
+    debounce: vue3Debounce({ lock: true })
+  }
 }
-.container {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 20px;
-    background-color: #ffffff;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    border-radius: 4px;
-}
+</script>
+
+<style scoped>
 .search-bar {
     display: flex;
     flex-direction: row;
@@ -21,7 +66,7 @@ body {
     position: relative;
 }
 .search-input {
-    width: 66%;
+    width: 100%;
     padding: 10px;
     font-size: 16px;
     border-radius: 4px;
@@ -70,12 +115,17 @@ body {
     margin-right: 10px;
 }
 .search-result-button {
+    color: #ffffff;
+    background-color: #169ba0;
+    border: none;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    font-size: 11pt;
     display: inline-block;
     padding: 10px 20px;
     background-color: #169ba0;
     color: #fff;
-    border-radius: 5px;
-    text-decoration: none;
 }
 .search-result-button hover {
     background-color: #136063;
@@ -90,8 +140,14 @@ body {
     color: #757575;
     background-color: #f2f2f2;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    height: auto;
+    /* height: auto; */
     position: relative;
+    resize: none;
+    overflow: hidden;
+    font-variant: monospace;
+    font-size: 1rem;
+    color: #000;
+    min-height: 72px;
 }
 #char-count {
     position: absolute;
@@ -173,3 +229,4 @@ body {
 .not-loading {
     display: none;
 }
+</style>

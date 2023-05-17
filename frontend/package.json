@@ -1,13 +1,19 @@
 {
-  "name": "frontend",
-  "private": true,
+  "name": "docustore",
   "version": "0.0.0",
+  "private": true,
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
   },
+  "dependencies": {
+    "underscore": "^1.13.6",
+    "vue": "^3.3.2",
+    "vue-debounce": "^4.0.0"
+  },
   "devDependencies": {
-    "vite": "^3.0.7"
+    "@vitejs/plugin-vue": "^4.2.3",
+    "vite": "^4.3.5"
   }
 }
