@@ -11,6 +11,8 @@ import (
 
 var asciiRegex = regexp.MustCompile(`[^a-zA-Z0-9\s]`)
 
+var maxTokenLength int = 48
+
 type DocType int
 
 const (
@@ -59,10 +61,17 @@ func NewDocSummary(text string, identifier string, title string, docType DocType
 }
 
 func Tokenize(text string) []string {
-	text = asciiRegex.ReplaceAllString(text, "")
-	text = strings.ToLower(text)
 	text = unidecode.Unidecode(text)
+	text = strings.ToLower(text)
+	text = asciiRegex.ReplaceAllString(text, "")
 	tokens := strings.Fields(text)
+	for i := 0; i < len(tokens); i++ {
+		t := tokens[i]
+		if len(t) > maxTokenLength {
+			t = t[:maxTokenLength]
+			tokens[i] = t
+		}
+	}
 	return tokens
 }
 
