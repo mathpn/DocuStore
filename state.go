@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 )
 
 type RuntimeState struct {
@@ -130,7 +131,11 @@ var newLineRegex = regexp.MustCompile(`\s`)
 func titleFromText(text string) string {
 	// FIXME limit to text length
 	// TODO select first N words
-	title := text[0:50]
+	words := strings.Split(text, " ")
+	if len(words) > 20 {
+		words = words[:20]
+	}
+	title := strings.Join(words, " ")
 	title = newLineRegex.ReplaceAllString(title, " ")
 	return title
 }
@@ -208,7 +213,6 @@ func queryDocument(text string, state *RuntimeState) ([]*SimResult, error) {
 		return nil, err
 	}
 
-	fmt.Printf("%+v\n", docSummaries)
 	similarities := TFIDFSimilarity(text, state.docCounter, docSummaries...)
 	printSimilarities(similarities, state.rawFolder)
 	return similarities, nil
