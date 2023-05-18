@@ -201,7 +201,7 @@ func addDocument(text string, identifier string, title string, docType DocType, 
 	return err
 }
 
-func queryDocument(text string, state *RuntimeState) ([]*SimResult, error) {
+func queryDocument(text string, state *RuntimeState) ([]*SearchResult, error) {
 	// PrintTree(os.Stdout, state.index.Root, 0, 'M')
 	tokens := Tokenize(text)
 	fmt.Printf("%+v\n", tokens)
@@ -216,7 +216,7 @@ func queryDocument(text string, state *RuntimeState) ([]*SimResult, error) {
 	return similarities, nil
 }
 
-func printSimilarities(sims []*SimResult, rawFolder string) {
+func printSimilarities(sims []*SearchResult, rawFolder string) {
 	fmt.Println("Here are the top 5 matches:")
 	for i, sim := range sims {
 		if sim.Score == 0.0 {

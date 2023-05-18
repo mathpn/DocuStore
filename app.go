@@ -39,7 +39,7 @@ func (a *App) AddContent(content string) error {
 }
 
 // something here
-func (a *App) Search(text string) []*SimResult {
+func (a *App) Search(text string) []*SearchResult {
 	out, err := queryDocument(text, a.state)
 	check(err)
 	return out

@@ -38,7 +38,7 @@ type DocSummary struct {
 	Norm       float64            // norm of TermFreqs vector
 }
 
-type SimResult struct {
+type SearchResult struct {
 	DocID      string
 	Title      string
 	Type       DocType
@@ -114,7 +114,7 @@ func (d *DocCounter) calculateIDF() {
 	}
 }
 
-func TFIDFSimilarity(text string, c *DocCounter, docs ...*DocSummary) []*SimResult {
+func TFIDFSimilarity(text string, c *DocCounter, docs ...*DocSummary) []*SearchResult {
 	termFreqs, queryNorm := getTermFrequency(text)
 	c.calculateIDF()
 	scores := make([]float64, len(docs))
@@ -124,10 +124,10 @@ func TFIDFSimilarity(text string, c *DocCounter, docs ...*DocSummary) []*SimResu
 			scores[i] += queryCount * refCount
 		}
 	}
-	result := make([]*SimResult, len(docs))
+	result := make([]*SearchResult, len(docs))
 	queryNorm = math.Sqrt(queryNorm)
 	for i := 0; i < len(scores); i++ {
-		result[i] = &SimResult{
+		result[i] = &SearchResult{
 			docs[i].DocID,
 			docs[i].Title,
 			docs[i].Type,
