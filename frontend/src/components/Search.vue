@@ -1,17 +1,22 @@
 <template>
     <div class="container">
         <div class="search-bar">
-            <textarea v-on:keydown.enter="addInput" type="text" class="text-input" ref="input-box" id="input-box" rows="1" @input="resizeTextarea" placeholder="Please enter a URL or raw text" v-model="input"/>
+            <textarea @keydown.enter="addInput" type="text" class="text-input" ref="input-box" id="input-box" rows="1" @input="resizeTextarea" placeholder="Please enter a URL or raw text" v-model="input"/>
             <div id="char-count"></div>
-            <button id="content-button" class="search-button" v-on:click="addInput">Register</button>
+            <button id="content-button" class="search-button" @click="addInput">Register</button>
         </div>
         <div class="search-bar">
-            <input v-debounce:300ms="doSearch" v-on:keydown.enter="doSearch" type="text" class="search-input" id="search-box" placeholder="Search" v-model="searchField"/>
+            <input v-debounce:300ms="doSearch" @keydown.enter="doSearch" @input="resetIsSearched" type="text" class="search-input" id="search-box" placeholder="Search" v-model="searchField"/>
         </div>
         <div class="search-results" id="search-results" v-for="result in searchResults">
             <div class="search-result">
-                <span class="search-result-title">{{ result.Title }}</span>
-                <button class="search-result-button" v-on:click="openDocument(result)">Open</button>
+                <span v-if="result.expanded" @click="toggleExpandResult(result)" class="search-result-title">
+                    <b>Title: </b>{{ result.Title }}
+                    <br>
+                    <b>Score: </b>{{ Math.round(result.Score * 100) / 100 }}
+                </span>
+                <span v-else @click="toggleExpandResult(result)" class="search-result-title">{{ shortenTitle(result.Title) }}</span>
+                <button class="search-result-button" @click="openDocument(result)">Open</button>
             </div>
         </div>
     </div>
@@ -29,12 +34,39 @@ export default {
             input: '',
             searchField: '',
             searchResults: [],
+            isSearched: false,
         }
     },
     methods: {
+        shortenTitle(title) {
+            const words = title.split(" ");
+            let length = 0;
+            for (let i = 0; i < words.length; i++) {
+                const word = words[i];
+                length += word.length
+                if (length > 50) {
+                    return words.slice(0, Math.max(1, i - 1)).join(" ") + " (...)"
+                }
+            }
+            return title
+        },
         doSearch() {
-            console.log("searching", this.searchResults);
-            Search(this.searchField).then(results => this.searchResults = results);
+            if (!this.isSearched & this.searchField !== '') {
+                this.isSearched = true;
+                console.log("searching", this.searchResults);
+                Search(this.searchField).then(
+                    results => {
+                        results.forEach(result => result.expanded = false);
+                        this.searchResults = results;
+                    }
+                );
+            }
+        },
+        toggleExpandResult(result) {
+            result.expanded = !result.expanded;
+        },
+        resetIsSearched() {
+            this.isSearched = false;
         },
         addInput() {
             console.log("adding", this.input);
@@ -46,12 +78,15 @@ export default {
             element.style.height = element.scrollHeight + "px";
         },
         openDocument(document) {
-            // TODO open text files as markdown
-            BrowserOpenURL(document.Identifier);
-        }
+            if (document.Type == 0) {
+                BrowserOpenURL(document.Identifier);
+            } else {
+                console.log(document);
+            }
+        },
     },
     directives: {
-    debounce: vue3Debounce({ lock: true })
+    debounce: vue3Debounce({ lock: true }),
   }
 }
 </script>
@@ -106,14 +141,16 @@ export default {
     color: #ffffff;
     text-decoration: none;
 }
-.search-result a:hover {
+.search-result button:hover {
     background-color: #136063;
 }
-.search-result-url {
-    font-size: 14px;
-    font-weight: bold;
+.search-result-title {
+    /* font-size: 14px; */
+    /* font-weight: bold; */
     margin-right: 10px;
+    cursor: pointer;
 }
+
 .search-result-button {
     color: #ffffff;
     background-color: #169ba0;
@@ -126,10 +163,6 @@ export default {
     padding: 10px 20px;
     background-color: #169ba0;
     color: #fff;
-}
-.search-result-button hover {
-    background-color: #136063;
-    font-weight: bold;
 }
 .text-input {
     width: 66%;
