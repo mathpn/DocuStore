@@ -129,8 +129,6 @@ func (s *RuntimeState) recoverDocCounter() (*DocCounter, error) {
 var newLineRegex = regexp.MustCompile(`\s`)
 
 func titleFromText(text string) string {
-	// FIXME limit to text length
-	// TODO select first N words
 	words := strings.Split(text, " ")
 	if len(words) > 20 {
 		words = words[:20]
@@ -150,7 +148,7 @@ func addText(content string, state *RuntimeState) error {
 
 func addURL(url string, state *RuntimeState) error {
 	title, text := ScrapeText(url)
-	err := addDocument(text, url, title, DocType(Text), state)
+	err := addDocument(text, url, title, DocType(URL), state)
 	return err
 }
 
