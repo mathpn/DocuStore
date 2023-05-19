@@ -211,7 +211,7 @@ func queryDocument(text string, state *RuntimeState) ([]*SearchResult, error) {
 		return nil, err
 	}
 
-	similarities := TFIDFSimilarity(text, state.docCounter, docSummaries...)
+	similarities := TFIDFSimilarity(text, state.rawFolder, state.docCounter, docSummaries...)
 	printSimilarities(similarities, state.rawFolder)
 	return similarities, nil
 }

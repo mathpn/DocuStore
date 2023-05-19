@@ -22,7 +22,7 @@ export default {
             shortTitleLimit: 50,
         }
     },
-    props: ['title', 'score', 'identifier', 'type'],
+    props: ['title', 'score', 'identifier', 'type', 'rawContent'],
     methods: {
         shortenTitle() {
             const words = this.title.split(" ");
@@ -43,8 +43,9 @@ export default {
             if (this.Type == 0) {
                 BrowserOpenURL(this.identifier);
             } else {
-                // TODO markdown rendering
                 console.log(this.identifier);
+                this.$parent.$emit('markdown-content', this.rawContent);
+                this.$parent.$emit('global-component', 'markdown');
             }
         },
     },
@@ -52,7 +53,6 @@ export default {
 </script>
 
 <style scoped>
-
 .search-result {
     display: flex;
     flex-direction: row;

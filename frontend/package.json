@@ -8,6 +8,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "dompurify": "^3.0.3",
+    "marked": "^5.0.2",
+    "marked-gfm-heading-id": "^3.0.3",
     "underscore": "^1.13.6",
     "vue": "^3.3.2",
     "vue-debounce": "^4.0.0"

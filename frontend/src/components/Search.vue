@@ -8,6 +8,7 @@
                 :score="result.Score"
                 :type="result.Type"
                 :identifier="result.Identifier"
+                :rawContent="result.RawContent"
                 :key="result.DocID"
             ></search-result>
         </div>
