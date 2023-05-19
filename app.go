@@ -39,8 +39,6 @@ func (a *App) AddContent(content string) error {
 }
 
 // something here
-func (a *App) Search(text string) []*SearchResult {
-	out, err := queryDocument(text, a.state)
-	check(err)
-	return out
+func (a *App) Search(text string) ([]*SearchResult, error) {
+	return queryDocument(text, a.state)
 }

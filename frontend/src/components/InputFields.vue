@@ -1,9 +1,17 @@
 <template>
     <div class="search-bar">
+        <div v-if="error" class="error-popup">
+            <p><b>Error: {{ errorMsg }}</b></p>
+            <div id="slide-bar"></div>
+        </div>
         <textarea type="text" class="text-input" ref="input-box" id="input-box" rows="1"
-            @input="resizeTextarea(); limitInput();" placeholder="Please enter a URL or raw text" v-model="input" />
+            @input="resizeTextarea(); limitInput();" placeholder="Please enter a URL or raw text" v-model="input"
+            :disabled="addingData" />
         <div id="char-count">{{ charCount }}/{{ maxChars }}</div>
-        <button id="content-button" class="search-button" @click="addInput">Register</button>
+        <div v-if="addingData" id="content-button" class="search-button">
+            <div class="loader"></div>
+        </div>
+        <button v-else id="content-button" class="search-button" @click="addInput">Register</button>
     </div>
     <div class="search-bar">
         <input v-debounce:300ms="doSearch" @keydown.enter="doSearch" @input="resetIsSearched" type="text"
@@ -14,7 +22,7 @@
 <script>
 import { Search } from '../../wailsjs/go/main/App';
 import { AddContent } from '../../wailsjs/go/main/App';
-import { vue3Debounce } from 'vue-debounce'
+import { vue3Debounce } from 'vue-debounce';
 
 export default {
     data() {
@@ -23,6 +31,9 @@ export default {
             input: '',
             searchField: '',
             isSearched: false,
+            addingData: false,
+            errorMsg: '',
+            error: false,
         }
     },
     methods: {
@@ -45,23 +56,45 @@ export default {
             return title
         },
         doSearch() {
-            if (!this.isSearched & this.searchField !== '') {
-                this.isSearched = true;
-                console.log("searching", this.searchField);
-                Search(this.searchField).then(
+            if (this.isSearched | this.searchField === '') {
+                return
+            };
+            this.isSearched = true;
+            console.log("searching", this.searchField);
+            Search(this.searchField)
+                .then(
                     results => {
                         results.forEach(result => result.expanded = false);
                         this.$emit('search-results', results);
-                    }
-                );
-            }
+                    })
+                .catch(err => {
+                    console.log("doSearch failed: ", err);
+                    this.errorMsg = err;
+                    this.error = true;
+                    setTimeout(() => this.error = false, 1000);
+                })
         },
         resetIsSearched() {
             this.isSearched = false;
         },
         addInput() {
+            this.addingData = true;
+            if (this.input === '') {
+                this.addingData = false;
+                return
+            }
             console.log("adding", this.input);
             AddContent(this.input)
+                .then(() => {
+                    this.input = '';
+                })
+                .catch(err => {
+                    console.log("addInput failed: ", err);
+                    this.errorMsg = err;
+                    this.error = true;
+                    setTimeout(() => this.error = false, 1000);
+                })
+                .finally(() => this.addingData = false);
         },
         resizeTextarea() {
             let element = this.$refs["input-box"];
@@ -106,7 +139,8 @@ export default {
     bottom: 0px;
     right: 0px;
     width: 15%;
-    padding: 10px;
+    padding-top: 10px;
+    padding-bottom: 10px;
     font-size: 16px;
     font-weight: bold;
     color: #ffffff;
@@ -143,22 +177,26 @@ export default {
     color: #bebebe;
 }
 
-#success-popup {
-    display: none;
+.error-popup {
+    border: none;
+    border-radius: 4px;
     position: fixed;
     top: 50%;
     left: 50%;
+    color: #521414;
     transform: translate(-50%, -50%);
-    background-color: #fff;
+    background-color: #ffa29f;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     padding: 20px;
     z-index: 999;
 }
 
 #slide-bar {
+    border: none;
+    border-radius: 4px;
     position: relative;
     height: 5px;
-    background-color: #ccc;
+    background-color: #521414;
     position: fixed;
     bottom: 0;
     left: 0;
@@ -200,8 +238,8 @@ export default {
     border: 4px solid #f7f7f7;
     border-top: 4px solid #3498db;
     border-radius: 50%;
-    width: 16px;
-    height: 16px;
+    width: 10px;
+    height: 10px;
     animation: spin 1s linear infinite;
     margin: 0 auto;
 }
@@ -214,13 +252,5 @@ export default {
     100% {
         transform: rotate(360deg);
     }
-}
-
-.loading {
-    display: block;
-}
-
-.not-loading {
-    display: none;
 }
 </style>
