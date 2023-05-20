@@ -25,6 +25,9 @@ export default {
             searchResults: [],
         }
     },
+    mounted() {
+        window.scrollTo(0,0);
+    },
     methods: {
         addResults(results) {
             this.searchResults = results

@@ -14,6 +14,9 @@ export default {
             this.$emit('global-component', 'search');
         },
     },
+    mounted() {
+        window.scrollTo(0,0);
+    },
     computed: {
         parsedMarkdown() {
             return DOMPurify.sanitize(marked.parse(this.content, { mangle: false }))
