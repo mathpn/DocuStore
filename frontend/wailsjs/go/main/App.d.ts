@@ -4,4 +4,6 @@ import {main} from '../models';
 
 export function AddContent(arg1:string):Promise<void>;
 
+export function ReadTextFile(arg1:string):Promise<string>;
+
 export function Search(arg1:string):Promise<Array<main.SearchResult>>;

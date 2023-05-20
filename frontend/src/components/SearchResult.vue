@@ -22,7 +22,7 @@ export default {
             shortTitleLimit: 50,
         }
     },
-    props: ['title', 'score', 'identifier', 'type', 'rawContent'],
+    props: ['docID', 'title', 'score', 'identifier', 'type'],
     methods: {
         shortenTitle() {
             const words = this.title.split(" ");
@@ -40,11 +40,10 @@ export default {
             this.expanded = !this.expanded;
         },
         openDocument() {
-            if (this.Type == 0) {
+            if (this.type == 0) {
                 BrowserOpenURL(this.identifier);
             } else {
-                console.log(this.identifier);
-                this.$parent.$emit('markdown-content', this.rawContent);
+                this.$parent.$emit('markdown-doc-id', this.docID);
                 this.$parent.$emit('global-component', 'markdown');
             }
         },

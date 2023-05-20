@@ -1,9 +1,6 @@
 <template>
     <div class="search-bar">
-        <div v-if="error" class="error-popup">
-            <p><b>Error: {{ errorMsg }}</b></p>
-            <div id="slide-bar"></div>
-        </div>
+        <ErrorPopup v-if="error" :errorMsg="errorMsg"></ErrorPopup>
         <textarea type="text" class="text-input" ref="input-box" id="input-box" rows="1"
             @input="resizeTextarea(); limitInput();" placeholder="Please enter a URL or raw text" v-model="input"
             :disabled="addingData" />
@@ -20,6 +17,7 @@
 </template>
 
 <script>
+import ErrorPopup from './ErrorPopup.vue';
 import { Search } from '../../wailsjs/go/main/App';
 import { AddContent } from '../../wailsjs/go/main/App';
 import { vue3Debounce } from 'vue-debounce';
@@ -35,6 +33,9 @@ export default {
             errorMsg: '',
             error: false,
         }
+    },
+    components: {
+        ErrorPopup,
     },
     methods: {
         limitInput() {
@@ -94,7 +95,10 @@ export default {
                     this.error = true;
                     setTimeout(() => this.error = false, 1000);
                 })
-                .finally(() => this.addingData = false);
+                .finally(() => {
+                    this.addingData = false;
+                    this.resizeTextarea();
+                });
         },
         resizeTextarea() {
             let element = this.$refs["input-box"];
@@ -175,63 +179,6 @@ export default {
     right: 18%;
     font-size: 12px;
     color: #bebebe;
-}
-
-.error-popup {
-    border: none;
-    border-radius: 4px;
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    color: #521414;
-    transform: translate(-50%, -50%);
-    background-color: #ffa29f;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    padding: 20px;
-    z-index: 999;
-}
-
-#slide-bar {
-    border: none;
-    border-radius: 4px;
-    position: relative;
-    height: 5px;
-    background-color: #521414;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    z-index: 998;
-    animation: slideOut 1s linear forwards;
-}
-
-@keyframes slideOut {
-    from {
-        width: 100%;
-    }
-
-    to {
-        width: 0;
-    }
-}
-
-#register-popup {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    height: 30px;
-    transform: translate(-50%, -50%);
-    background-color: #f7f7f7;
-    z-index: 9999;
-}
-
-#register-popup-loading {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 10px;
-    background-color: #f7f7f7;
 }
 
 .loader {

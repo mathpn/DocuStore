@@ -4,11 +4,11 @@
         <div class="search-results" id="search-results">
             <search-result
                 v-for="result in searchResults"
+                :docID="result.DocID"
                 :title="result.Title"
                 :score="result.Score"
                 :type="result.Type"
                 :identifier="result.Identifier"
-                :rawContent="result.RawContent"
                 :key="result.DocID"
             ></search-result>
         </div>

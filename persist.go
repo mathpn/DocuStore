@@ -16,12 +16,14 @@ func SaveText(path string, text string) error {
 	return err
 }
 
-func LoadText(path string) string {
+func LoadText(path string) (string, error) {
 	lock.Lock()
 	defer lock.Unlock()
 	content, err := os.ReadFile(path)
-	check(err) // TODO improve
-	return string(content)
+	if err != nil {
+		return "", err
+	}
+	return string(content), nil
 }
 
 // SaveStruct saves a representation of v to the file at path.

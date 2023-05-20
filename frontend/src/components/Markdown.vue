@@ -1,6 +1,6 @@
 <template>
     <button class="back-button" @click="goBack">Go back</button>
-    <div v-html="parsedMarkdown"></div>
+    <div class="markdown-content" v-html="parsedMarkdown"></div>
 </template>
 
 <script>
@@ -12,7 +12,7 @@ export default {
     methods: {
         goBack() {
             this.$emit('global-component', 'search');
-        }
+        },
     },
     computed: {
         parsedMarkdown() {

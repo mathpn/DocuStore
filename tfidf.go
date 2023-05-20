@@ -2,7 +2,6 @@ package main
 
 import (
 	"math"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -47,7 +46,6 @@ type SearchResult struct {
 	Type       DocType
 	Identifier string
 	Score      float64
-	RawContent string
 }
 
 func NewDocSummary(text string, identifier string, title string, docType DocType) *DocSummary {
@@ -144,11 +142,6 @@ func TFIDFSimilarity(text string, rawFolder string, c *DocCounter, docs ...*DocS
 			docs[i].Type,
 			docs[i].Identifier,
 			scores[i] / (queryNorm*docs[i].Norm + 1e-8),
-			"",
-		}
-		if docs[i].Type == DocType(Text) {
-			raw := LoadText(filepath.Join(rawFolder, docs[i].DocID+".txt"))
-			result[i].RawContent = raw
 		}
 	}
 	sort.Slice(result, func(i, j int) bool {

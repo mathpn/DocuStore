@@ -6,6 +6,10 @@ export function AddContent(arg1) {
   return window['go']['main']['App']['AddContent'](arg1);
 }
 
+export function ReadTextFile(arg1) {
+  return window['go']['main']['App']['ReadTextFile'](arg1);
+}
+
 export function Search(arg1) {
   return window['go']['main']['App']['Search'](arg1);
 }
