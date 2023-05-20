@@ -1,5 +1,5 @@
 <template>
-    <div class="error-popup">
+    <div class="error-modal">
         <p><b>Error: {{ errorMsg }}</b></p>
         <div id="slide-bar"></div>
     </div>
@@ -12,7 +12,7 @@ export default {
 </script>
 
 <style scoped>
-.error-popup {
+.error-modal {
     border: none;
     border-radius: 4px;
     position: fixed;

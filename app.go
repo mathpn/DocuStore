@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"path/filepath"
+	"strings"
 )
 
 // App struct
@@ -29,21 +30,38 @@ func (a *App) startup(ctx context.Context) {
 
 }
 
-// Add content to collection. Argument is base64-encoded
-func (a *App) AddContent(encodedContent string) error {
+// Decode base64-encoded input
+func (a *App) decodeInput(encodedContent string) (string, error) {
 	var err error
 	bytes, err := base64.StdEncoding.DecodeString(encodedContent)
 	content := string(bytes)
 	if err != nil {
+		return "", err
+	}
+	content = strings.TrimSpace(content)
+	return content, nil
+}
+
+func (a *App) AddURL(encodedURL string) error {
+	var err error
+	content, err := a.decodeInput(encodedURL)
+	if err != nil {
 		return err
 	}
-	URLPrefix := URLRegex.FindString(content)
-	if URLPrefix != "" {
-		err = addURL(content, a.state)
-	} else {
-		err = addText(content, a.state)
+	return addURL(content, a.state)
+}
+
+func (a *App) AddText(encodedText string, encodedTitle string) error {
+	var err error
+	content, err := a.decodeInput(encodedText)
+	if err != nil {
+		return err
 	}
-	return err
+	title, err := a.decodeInput(encodedTitle)
+	if err != nil {
+		return err
+	}
+	return addText(content, title, a.state)
 }
 
 // Search a given query in the collection

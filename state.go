@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/gob"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -138,9 +139,15 @@ func titleFromText(text string) string {
 	return title
 }
 
-func addText(content string, state *RuntimeState) error {
+func addFile(filePath string, state *RuntimeState) {
+	content, err := os.ReadFile(filePath)
+	check(err)
 	text := string(content)
-	title := titleFromText(text)
+	addDocument(text, text, filePath, DocType(Text), state)
+
+}
+
+func addText(text string, title string, state *RuntimeState) error {
 	err := addDocument(text, text, title, DocType(Text), state)
 	return err
 
@@ -165,6 +172,12 @@ func fileExists(path string) bool {
 }
 
 func addDocument(text string, identifier string, title string, docType DocType, state *RuntimeState) error {
+	if title == "" {
+		return errors.New("empty title is not allowed")
+	}
+	if text == "" {
+		return errors.New("empty content")
+	}
 	docSummary := NewDocSummary(text, identifier, title, docType)
 	rows, err := InsertDocument(state.db, docSummary)
 	if err != nil {
@@ -212,11 +225,11 @@ func queryDocument(text string, state *RuntimeState) ([]*SearchResult, error) {
 	}
 
 	similarities := TFIDFSimilarity(text, state.rawFolder, state.docCounter, docSummaries...)
-	printSimilarities(similarities, state.rawFolder)
+	printSearchResults(similarities, state.rawFolder)
 	return similarities, nil
 }
 
-func printSimilarities(sims []*SearchResult, rawFolder string) {
+func printSearchResults(sims []*SearchResult, rawFolder string) {
 	fmt.Println("Here are the top 5 matches:")
 	for i, sim := range sims {
 		if sim.Score == 0.0 {

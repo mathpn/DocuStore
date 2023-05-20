@@ -1,4 +1,6 @@
 <template>
+    <InputModal v-if="showModal" v-on:show-modal="toggleModal" v-on:input-content="addText"
+        :message="'Please provide a title:'"></InputModal>
     <div class="search-bar">
         <ErrorPopup v-if="error" :errorMsg="errorMsg"></ErrorPopup>
         <textarea type="text" class="text-input" ref="input-box" id="input-box" rows="1"
@@ -17,10 +19,14 @@
 </template>
 
 <script>
-import ErrorPopup from './ErrorPopup.vue';
+import ErrorPopup from './ErrorModal.vue';
 import { Search } from '../../wailsjs/go/main/App';
-import { AddContent } from '../../wailsjs/go/main/App';
+import { AddURL } from '../../wailsjs/go/main/App';
+import { AddText } from '../../wailsjs/go/main/App';
 import { vue3Debounce } from 'vue-debounce';
+import InputModal from './InputModal.vue';
+
+const URLRegex = /^htt(p|ps):\/\/(.*)(\s|$)/i;
 
 export default {
     data() {
@@ -32,10 +38,12 @@ export default {
             addingData: false,
             errorMsg: '',
             error: false,
+            showModal: false,
         }
     },
     components: {
         ErrorPopup,
+        InputModal
     },
     methods: {
         limitInput() {
@@ -43,6 +51,9 @@ export default {
                 // truncate the text to the maximum size
                 this.input = this.input.substring(0, this.maxChars);
             }
+        },
+        updateTitle(title) {
+            this.title = title;
         },
         shortenTitle(title) {
             const words = title.split(" ");
@@ -79,13 +90,34 @@ export default {
             this.isSearched = false;
         },
         addInput() {
-            this.addingData = true;
-            if (this.input === '') {
+            const input = this.input.trim();
+            if (input === '') {
                 this.addingData = false;
                 return
             }
-            const input = btoa(this.input); // base64 encoding
-            AddContent(input)
+            const type = URLRegex.test(input) ? 0 : 1;
+            if (type === 1) {
+                this.toggleModal(true);
+                return
+            } else {
+                this.addURL()
+            }
+        },
+        addURL() {
+            const encodedInput = btoa(this.input); // base64 encoding
+            this.addingData = true;
+            const promise = AddURL(encodedInput);
+            this.resolveAddPromise(promise);
+        },
+        addText(title) {
+            this.addingData = true;
+            const encodedInput = btoa(this.input); // base64 encoding
+            const encodedTitle = btoa(title);
+            const promise = AddText(encodedInput, encodedTitle);
+            this.resolveAddPromise(promise);
+        },
+        resolveAddPromise(promise) {
+            promise
                 .then(() => {
                     this.input = '';
                 })
@@ -105,6 +137,13 @@ export default {
             element.style.height = "20px";
             element.style.height = (element.scrollHeight - 20) + "px";
         },
+        toggleModal(show) {
+            if (show === true | show === false) {
+                this.showModal = show;
+            } else {
+                this.showModal = !this.showModal;
+            }
+        }
     },
     computed: {
         charCount() {

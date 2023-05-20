@@ -1,6 +1,6 @@
 <script>
 import { ReadTextFile } from '../wailsjs/go/main/App';
-import ErrorPopup from './components/ErrorPopup.vue';
+import ErrorModal from './components/ErrorModal.vue';
 import Search from './components/Search.vue';
 import Markdown from './components/Markdown.vue';
 
@@ -35,7 +35,7 @@ export default {
     }
   },
   components: {
-    ErrorPopup,
+    ErrorModal,
     Markdown,
     Search,
   }
@@ -43,7 +43,7 @@ export default {
 </script>
 
 <template>
-  <ErrorPopup v-if="error" :errorMsg="errorMsg"></ErrorPopup>
+  <ErrorModal v-if="error" :errorMsg="errorMsg"></ErrorModal>
   <Markdown v-on:global-component="changeComponent" :content="this.textContent"
     v-if="this.loaded & this.globalComponent === 'markdown'"></Markdown>
   <Search v-on:markdown-doc-id="loadText" v-on:global-component="changeComponent" v-else></Search>
