@@ -12,7 +12,7 @@ import (
 	"golang.org/x/net/html"
 )
 
-var URLRegex = regexp.MustCompile(`htt(p|ps)://(.*)(\s|$)`)
+var URLRegex = regexp.MustCompile(`^htt(p|ps)://(.*)(\s|$)`)
 
 func ScrapeText(url string) (string, string) {
 	buffer := bytes.NewBufferString("")
