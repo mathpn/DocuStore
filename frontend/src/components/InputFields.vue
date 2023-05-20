@@ -83,8 +83,8 @@ export default {
                 this.addingData = false;
                 return
             }
-            console.log("adding", this.input);
-            AddContent(this.input)
+            const input = btoa(this.input); // base64 encoding
+            AddContent(input)
                 .then(() => {
                     this.input = '';
                 })
