@@ -2,6 +2,8 @@ package main
 
 import (
 	"embed"
+	"flag"
+	"fmt"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -17,7 +19,7 @@ func check(err error) {
 	}
 }
 
-func main() {
+func runApp() {
 	// Create an instance of the app structure
 	app := NewApp()
 
@@ -38,5 +40,60 @@ func main() {
 
 	if err != nil {
 		println("Error:", err.Error())
+	}
+}
+
+func cliInterface() {
+	var err error
+	state := NewRuntimeState()
+	err = state.loadIndex()
+	check(err)
+	err = state.loadCounter()
+	check(err)
+
+	cmd := flag.Arg(0)
+	switch cmd {
+	case "add":
+		fmt.Println("adding document")
+		arg := flag.Arg(1)
+		if arg == "" {
+			fmt.Println("You must provide a valid file path or URL.")
+			return
+		}
+		found := URLRegex.FindString(arg)
+		if found != "" {
+			err = addURL(arg, state)
+			check(err)
+		} else {
+			err = addFile(arg, state)
+			check(err)
+		}
+	case "query":
+		fmt.Println("querying documents")
+		query := flag.Arg(1)
+		if query == "" {
+			fmt.Println("You must provide a query string.")
+			return
+		}
+		// FIXME loop for profiling only, remove later
+		for i := 0; i < 100; i++ {
+			result, err := queryDocument(query, state)
+			if err != nil {
+				panic(err)
+			}
+			printSearchResults(result, state.rawFolder)
+		}
+	default:
+		fmt.Println("Valid commands: add, query")
+	}
+}
+
+func main() {
+	flag.Parse()
+
+	if flag.NArg() < 1 {
+		runApp()
+	} else {
+		cliInterface()
 	}
 }
