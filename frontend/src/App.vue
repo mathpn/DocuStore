@@ -8,7 +8,7 @@ export default {
   name: 'DocuStore',
   data() {
     return {
-      globalComponent: 'search',
+      search: true,
       textContent: '',
       loaded: false,
       error: false,
@@ -16,8 +16,8 @@ export default {
     }
   },
   methods: {
-    changeComponent(componentName) {
-      this.globalComponent = componentName
+    showSearch(show) {
+      this.search = show;
     },
     loadText(docID) {
       this.loaded = false;
@@ -44,9 +44,9 @@ export default {
 
 <template>
   <ErrorModal v-if="error" :errorMsg="errorMsg"></ErrorModal>
-  <Markdown v-on:global-component="changeComponent" :content="this.textContent"
-    v-if="this.loaded & this.globalComponent === 'markdown'"></Markdown>
-  <Search v-on:markdown-doc-id="loadText" v-on:global-component="changeComponent" v-else></Search>
+  <Markdown v-on:show-search="showSearch" :content="this.textContent"
+    v-if="this.loaded & !this.search"></Markdown>
+  <Search v-on:markdown-doc-id="loadText" v-on:show-search="showSearch" v-show="search"></Search>
 </template>
 
 <style scoped></style>

@@ -44,7 +44,7 @@ export default {
                 BrowserOpenURL(this.identifier);
             } else {
                 this.$parent.$emit('markdown-doc-id', this.docID);
-                this.$parent.$emit('global-component', 'markdown');
+                this.$parent.$emit('show-search', false);
             }
         },
     },

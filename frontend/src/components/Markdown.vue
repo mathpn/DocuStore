@@ -11,7 +11,7 @@ export default {
     props: ['content'],
     methods: {
         goBack() {
-            this.$emit('global-component', 'search');
+            this.$emit('show-search', true);
         },
     },
     mounted() {

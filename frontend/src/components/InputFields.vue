@@ -14,7 +14,7 @@
     </div>
     <div class="search-bar">
         <input v-debounce:300ms="doSearch" @keydown.enter="doSearch" @input="resetIsSearched" type="text"
-            class="search-input" id="search-box" placeholder="Search" v-model="searchField" />
+            class="search-input" id="search-box" ref="searchInput" placeholder="Search" v-model="searchField" />
     </div>
 </template>
 
@@ -44,6 +44,9 @@ export default {
     components: {
         ErrorPopup,
         InputModal
+    },
+    mounted() {
+        this.$refs.searchInput.focus();
     },
     methods: {
         limitInput() {
