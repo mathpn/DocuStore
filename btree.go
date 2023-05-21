@@ -50,7 +50,6 @@ func (n *BinaryNode) Bal() int {
 
 func (n *BinaryNode) insert(Data *docToken) *BinaryNode {
 	if n == nil {
-		// fmt.Println("creating node: " + Data.token)
 		return &BinaryNode{
 			Data:   NewInvIndex(Data.token, Data.docID),
 			height: 1,
@@ -58,7 +57,6 @@ func (n *BinaryNode) insert(Data *docToken) *BinaryNode {
 	}
 	if Data.token == n.Data.Token {
 		n.Data.DocIDs = append(n.Data.DocIDs, Data.docID)
-		// fmt.Println("same token: " + Data.token)
 		return n
 	}
 	if Data.token < n.Data.Token {
@@ -71,7 +69,6 @@ func (n *BinaryNode) insert(Data *docToken) *BinaryNode {
 }
 
 func (n *BinaryNode) rotateLeft() *BinaryNode {
-	// fmt.Println("rotateLeft " + n.Data.Token)
 	r := n.Right
 	n.Right = r.Left
 	r.Left = n
@@ -82,7 +79,6 @@ func (n *BinaryNode) rotateLeft() *BinaryNode {
 }
 
 func (n *BinaryNode) rotateRight() *BinaryNode {
-	// fmt.Println("rotateRight " + n.Data.Token)
 	l := n.Left
 	n.Left = l.Right
 	l.Right = n
@@ -106,7 +102,6 @@ func (n *BinaryNode) rotateLeftRight() *BinaryNode {
 }
 
 func (n *BinaryNode) rebalance() *BinaryNode {
-	// fmt.Println("rebalance " + n.Data.Token)
 	switch {
 	case n.Bal() < -1 && n.Left.Bal() == -1:
 		return n.rotateRight()
@@ -154,13 +149,16 @@ func (t *BinaryTree) rebalance() {
 }
 
 func (t *BinaryTree) Search(token string) *InvertedIndex {
+	if t.Root == nil {
+		return nil
+	}
 	if t.Root.Data.Token == token {
 		return t.Root.Data
 	}
 	return t.Root.search(token)
 }
 
-func (t *BinaryTree) SearchDoc(tokens []string) []string {
+func (t *BinaryTree) SearchTokens(tokens []string) []string {
 	results := make([]*InvertedIndex, len(tokens))
 	var wg sync.WaitGroup
 	for i := 0; i < len(tokens); i++ {
@@ -187,10 +185,6 @@ func (t *BinaryTree) SearchDoc(tokens []string) []string {
 			}
 		}
 	}
-	// fmt.Printf("%+v\n", tokens)
-	// fmt.Printf("%+v\n", results)
-	// fmt.Printf("%+v\n", docMap)
-	// fmt.Printf("%+v\n", out)
 	return out
 }
 
@@ -200,21 +194,14 @@ func (n *BinaryNode) search(token string) *InvertedIndex {
 	}
 	if token <= n.Data.Token {
 		if n.Left == nil {
-			return &InvertedIndex{
-				token,
-				make([]string, 0),
-			}
+			return nil
 		}
 		return n.Left.search(token)
-	} else {
-		if n.Right == nil {
-			return &InvertedIndex{
-				token,
-				make([]string, 0),
-			}
-		}
-		return n.Right.search(token)
 	}
+	if n.Right == nil {
+		return nil
+	}
+	return n.Right.search(token)
 }
 
 func PrintTree(w io.Writer, node *BinaryNode, ns int, ch rune) {

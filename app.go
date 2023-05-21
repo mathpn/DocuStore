@@ -24,9 +24,13 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.state = NewRuntimeState()
 	err := a.state.loadIndex()
-	check(err)
+	if err != nil {
+		panic(err)
+	}
 	err = a.state.loadCounter()
-	check(err)
+	if err != nil {
+		panic(err)
+	}
 
 }
 

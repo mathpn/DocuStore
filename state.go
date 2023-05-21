@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strings"
 )
 
 type RuntimeState struct {
@@ -127,24 +125,14 @@ func (s *RuntimeState) recoverDocCounter() (*DocCounter, error) {
 	return docCounter, nil
 }
 
-var newLineRegex = regexp.MustCompile(`\s`)
-
-func titleFromText(text string) string {
-	words := strings.Split(text, " ")
-	if len(words) > 20 {
-		words = words[:20]
-	}
-	title := strings.Join(words, " ")
-	title = newLineRegex.ReplaceAllString(title, " ")
-	return title
-}
-
-func addFile(filePath string, state *RuntimeState) {
+func addFile(filePath string, state *RuntimeState) error {
 	content, err := os.ReadFile(filePath)
-	check(err)
+	if err != nil {
+		return err
+	}
 	text := string(content)
 	addDocument(text, text, filePath, DocType(Text), state)
-
+	return nil
 }
 
 func addText(text string, title string, state *RuntimeState) error {
@@ -157,18 +145,6 @@ func addURL(url string, state *RuntimeState) error {
 	title, text := ScrapeText(url)
 	err := addDocument(text, url, title, DocType(URL), state)
 	return err
-}
-
-func fileExists(path string) bool {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true // file exists
-	}
-	if os.IsNotExist(err) {
-		return false // file does not exist
-	}
-	// if an error other than "file does not exist" occurs, we assume the file exists
-	return true
 }
 
 func addDocument(text string, identifier string, title string, docType DocType, state *RuntimeState) error {
@@ -215,17 +191,14 @@ func addDocument(text string, identifier string, title string, docType DocType, 
 }
 
 func queryDocument(text string, state *RuntimeState) ([]*SearchResult, error) {
-	// PrintTree(os.Stdout, state.index.Root, 0, 'M')
 	tokens := Tokenize(text)
-	fmt.Printf("%+v\n", tokens)
-	docIDs := state.index.SearchDoc(tokens)
+	docIDs := state.index.SearchTokens(tokens)
 	docSummaries, err := LoadDocuments(context.Background(), state.db, docIDs...)
 	if err != nil {
 		return nil, err
 	}
 
 	similarities := TFIDFSimilarity(text, state.rawFolder, state.docCounter, docSummaries...)
-	printSearchResults(similarities, state.rawFolder)
 	return similarities, nil
 }
 

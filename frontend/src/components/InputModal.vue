@@ -2,7 +2,8 @@
     <div class="background" @click="closeModal"></div>
     <div class="input-modal">
         <p class="modal-text">{{ message }}</p>
-        <input v-model="input" type="text" ref="modalinput" class="modal-input" placeholder=""/>
+        <input v-model="input" type="text" ref="modalinput" @keydown.enter="submitInput" class="modal-input"
+            placeholder="" />
         <button class="modal-button" @click="submitInput">OK</button>
         <button class="modal-button" @click="closeModal">Cancel</button>
     </div>
@@ -49,12 +50,14 @@ export default {
     opacity: 0.2;
 
 }
+
 .modal-text {
     width: 95%;
     margin-left: auto;
     margin-right: auto;
     text-align: left;
 }
+
 .input-modal {
     border: none;
     border-radius: 4px;
@@ -100,5 +103,4 @@ export default {
     border-radius: 4px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     cursor: pointer;
-}
-</style>
+}</style>

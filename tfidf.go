@@ -110,7 +110,6 @@ func NewDocCounter() *DocCounter {
 func (d *DocCounter) AddDocuments(DocSummaries ...*DocSummary) {
 	for i := 0; i < len(DocSummaries); i++ {
 		d.nDocs++
-		// d.DocSummaries = append(d.DocSummaries, DocSummaries[i])
 		for token := range DocSummaries[i].TermFreqs {
 			d.DocCounts[token]++
 		}
