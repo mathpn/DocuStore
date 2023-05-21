@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"math"
 	"regexp"
 	"sort"
@@ -58,6 +60,12 @@ func NewDocSummary(text string, identifier string, title string, docType DocType
 		TermFreqs:  termFreqs,
 		SquareNorm: norm,
 	}
+}
+
+func hashDocument(text string) string {
+	hash := sha256.Sum256([]byte(text))
+	hashString := hex.EncodeToString(hash[:])
+	return hashString
 }
 
 func Tokenize(text string) []string {

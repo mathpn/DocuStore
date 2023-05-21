@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/base64"
-	"path/filepath"
 	"strings"
 )
 
@@ -75,5 +74,5 @@ func (a *App) Search(text string) ([]*SearchResult, error) {
 
 // Read contents from a raw text file stored in the collection
 func (a *App) ReadTextFile(docID string) (string, error) {
-	return LoadText(filepath.Join(a.state.rawFolder, docID+".txt"))
+	return LoadText(a.state.db, docID)
 }

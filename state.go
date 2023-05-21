@@ -68,7 +68,7 @@ func (s *RuntimeState) recoverIndex() (*BinaryTree, error) {
 	}
 	btree := &BinaryTree{nil}
 	for _, docID := range docIDs {
-		doc, err := LoadDocument(s.db, docID)
+		doc, err := LoadDocSummary(s.db, docID)
 		if err != nil {
 			return nil, err
 		}
@@ -110,7 +110,7 @@ func (s *RuntimeState) recoverDocCounter() (*DocCounter, error) {
 
 	docCounter := NewDocCounter()
 	for _, docID := range docIDs {
-		doc, err := LoadDocument(s.db, docID)
+		doc, err := LoadDocSummary(s.db, docID)
 		if err != nil {
 			return nil, err
 		}
@@ -155,7 +155,7 @@ func addDocument(text string, identifier string, title string, docType DocType, 
 		return errors.New("empty content")
 	}
 	docSummary := NewDocSummary(text, identifier, title, docType)
-	rows, err := InsertDocument(state.db, docSummary)
+	rows, err := InsertDocument(state.db, docSummary, text)
 	if err != nil {
 		return err
 	}
@@ -175,14 +175,6 @@ func addDocument(text string, identifier string, title string, docType DocType, 
 		return err
 	}
 
-	err = SaveText(
-		filepath.Join(state.rawFolder, docSummary.DocID+".txt"),
-		text,
-	)
-	if err != nil {
-		return err
-	}
-
 	err = SaveStruct(
 		filepath.Join(state.dataFolder, "docCounter.gob"),
 		state.docCounter,
@@ -193,7 +185,7 @@ func addDocument(text string, identifier string, title string, docType DocType, 
 func queryDocument(text string, state *RuntimeState) ([]*SearchResult, error) {
 	tokens := Tokenize(text)
 	docIDs := state.index.SearchTokens(tokens)
-	docSummaries, err := LoadDocuments(context.Background(), state.db, docIDs...)
+	docSummaries, err := LoadDocSummaries(context.Background(), state.db, docIDs...)
 	if err != nil {
 		return nil, err
 	}

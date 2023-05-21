@@ -9,23 +9,6 @@ import (
 
 var lock sync.Mutex
 
-func SaveText(path string, text string) error {
-	lock.Lock()
-	defer lock.Unlock()
-	err := os.WriteFile(path, []byte(text), 0644)
-	return err
-}
-
-func LoadText(path string) (string, error) {
-	lock.Lock()
-	defer lock.Unlock()
-	content, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
-	return string(content), nil
-}
-
 // SaveStruct saves a representation of v to the file at path.
 func SaveStruct(path string, v interface{}) error {
 	lock.Lock()
