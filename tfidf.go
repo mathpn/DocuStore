@@ -37,7 +37,7 @@ type DocSummary struct {
 	Type       DocType
 	Identifier string
 	TermFreqs  map[string]float64 // term frequency
-	Norm       float64            // norm of TermFreqs vector
+	SquareNorm float64            // squared norm of TermFreqs vector
 }
 
 type SearchResult struct {
@@ -56,7 +56,7 @@ func NewDocSummary(text string, identifier string, title string, docType DocType
 		Identifier: identifier,
 		Type:       docType,
 		TermFreqs:  termFreqs,
-		Norm:       norm,
+		SquareNorm: norm,
 	}
 }
 
@@ -83,14 +83,13 @@ func getTermFrequency(text string) (map[string]float64, float64) {
 		termCounts[token]++
 	}
 	termFreqs := make(map[string]float64)
-	norm := 0.0
+	var squareNorm float64
 	for token, count := range termCounts {
 		freq := float64(count) / nTokens
-		norm += freq * freq
+		squareNorm += freq * freq
 		termFreqs[token] = freq
 	}
-	norm = math.Sqrt(norm)
-	return termFreqs, norm
+	return termFreqs, squareNorm
 }
 
 type DocCounter struct {
@@ -133,14 +132,14 @@ func TFIDFSimilarity(text string, rawFolder string, c *DocCounter, docs ...*DocS
 		}
 	}
 	result := make([]*SearchResult, len(docs))
-	queryNorm = math.Sqrt(queryNorm)
 	for i := 0; i < len(scores); i++ {
+		invNorm := math.Sqrt(1 / (queryNorm*docs[i].SquareNorm + 1e-8))
 		result[i] = &SearchResult{
 			docs[i].DocID,
 			docs[i].Title,
 			docs[i].Type,
 			docs[i].Identifier,
-			scores[i] / (queryNorm*docs[i].Norm + 1e-8),
+			math.Sqrt(scores[i] * invNorm),
 		}
 	}
 	sort.Slice(result, func(i, j int) bool {
