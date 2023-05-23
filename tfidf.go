@@ -130,7 +130,7 @@ func (d *DocCounter) calculateIDF() {
 	}
 }
 
-func TFIDFSimilarity(text string, rawFolder string, c *DocCounter, docs ...*DocSummary) []*SearchResult {
+func TFIDFSimilarity(text string, c *DocCounter, docs ...*DocSummary) []*SearchResult {
 	termFreqs, queryNorm := getTermFrequency(text)
 	c.calculateIDF()
 	scores := make([]float64, len(docs))

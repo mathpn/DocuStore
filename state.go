@@ -9,11 +9,12 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/adrg/xdg"
 )
 
 type RuntimeState struct {
 	dataFolder string
-	rawFolder  string
 	db         *sql.DB
 	index      *BinaryTree
 	docCounter *DocCounter
@@ -21,14 +22,9 @@ type RuntimeState struct {
 
 func NewRuntimeState() (*RuntimeState, error) {
 	gob.Register(DocSummary{})
-	workDir, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-
-	dataFolder := filepath.Join(workDir, "data")
-	rawFolder := filepath.Join(dataFolder, "raw")
-	err = os.MkdirAll(rawFolder, 0755)
+	stateDir := xdg.StateHome
+	dataFolder := filepath.Join(stateDir, "DocuStore")
+	err := os.MkdirAll(dataFolder, 0755)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +36,6 @@ func NewRuntimeState() (*RuntimeState, error) {
 
 	state := &RuntimeState{
 		dataFolder,
-		rawFolder,
 		db,
 		nil,
 		nil,
@@ -239,11 +234,11 @@ func queryDocument(text string, state *RuntimeState) ([]*SearchResult, error) {
 		return nil, err
 	}
 
-	similarities := TFIDFSimilarity(text, state.rawFolder, state.docCounter, docSummaries...)
+	similarities := TFIDFSimilarity(text, state.docCounter, docSummaries...)
 	return similarities, nil
 }
 
-func printSearchResults(sims []*SearchResult, rawFolder string) {
+func printSearchResults(sims []*SearchResult) {
 	fmt.Println("Here are the top 5 matches:")
 	for i, sim := range sims {
 		if sim.Score == 0.0 {

@@ -82,7 +82,7 @@ func cliInterface() {
 			if err != nil {
 				panic(err)
 			}
-			printSearchResults(result, state.rawFolder)
+			printSearchResults(result)
 		}
 	default:
 		fmt.Println("Valid commands: add, query")
