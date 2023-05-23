@@ -45,11 +45,11 @@ func runApp() {
 
 func cliInterface() {
 	var err error
-	state, err := NewRuntimeState()
+	engine, err := NewEngine()
 	check(err)
-	err = state.loadIndex()
+	err = engine.loadIndex()
 	check(err)
-	err = state.loadCounter()
+	err = engine.loadCounter()
 	check(err)
 
 	cmd := flag.Arg(0)
@@ -63,10 +63,10 @@ func cliInterface() {
 		}
 		found := URLRegex.FindString(arg)
 		if found != "" {
-			err = addURL(arg, state)
+			err = engine.addURL(arg)
 			check(err)
 		} else {
-			err = addFile(arg, state)
+			err = engine.addFile(arg)
 			check(err)
 		}
 	case "query":
@@ -78,7 +78,7 @@ func cliInterface() {
 		}
 		// FIXME loop for profiling only, remove later
 		for i := 0; i < 100; i++ {
-			result, err := queryDocument(query, state)
+			result, err := engine.queryDocument(query)
 			if err != nil {
 				panic(err)
 			}

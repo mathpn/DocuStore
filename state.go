@@ -13,14 +13,14 @@ import (
 	"github.com/adrg/xdg"
 )
 
-type RuntimeState struct {
+type DocuEngine struct {
 	dataFolder string
 	db         *sql.DB
 	index      *BinaryTree
 	docCounter *DocCounter
 }
 
-func NewRuntimeState() (*RuntimeState, error) {
+func NewEngine() (*DocuEngine, error) {
 	gob.Register(DocSummary{})
 	stateDir := xdg.StateHome
 	dataFolder := filepath.Join(stateDir, "DocuStore")
@@ -34,7 +34,7 @@ func NewRuntimeState() (*RuntimeState, error) {
 		return nil, err
 	}
 
-	state := &RuntimeState{
+	state := &DocuEngine{
 		dataFolder,
 		db,
 		nil,
@@ -44,25 +44,25 @@ func NewRuntimeState() (*RuntimeState, error) {
 }
 
 // Load or create BTree index
-func (s *RuntimeState) loadIndex() error {
+func (e *DocuEngine) loadIndex() error {
 	gob.Register(BinaryTree{})
-	indexPath := filepath.Join(s.dataFolder, "index.gob")
+	indexPath := filepath.Join(e.dataFolder, "index.gob")
 
 	index := &BinaryTree{nil, 0}
-	latestTs, err := GetLatestTimestamp(s.db)
+	latestTs, err := GetLatestTimestamp(e.db)
 	if err != nil {
 		return err
 	}
 	if latestTs == 0 {
 		// no documents
-		s.index = index
+		e.index = index
 		return nil
 	}
 
 	err = LoadStruct(indexPath, &index)
 	if err != nil {
 		fmt.Println("Error reading BTree index:", err, "- attempting to recover")
-		index, err = s.recoverIndex()
+		index, err = e.recoverIndex()
 		if err != nil {
 			fmt.Println("Index recovery failed, documents may have been lost:", err)
 			return err
@@ -73,31 +73,31 @@ func (s *RuntimeState) loadIndex() error {
 	if index.Timestamp != latestTs {
 		fmt.Printf("%+v - %+v\n", index.Timestamp, latestTs)
 		fmt.Println("BTree index is out of sync with latest changes, recovering")
-		index, err = s.recoverIndex()
+		index, err = e.recoverIndex()
 		if err != nil {
 			fmt.Println("BTree index recovery failed, documents may have been lost:", err)
 			return err
 		}
 	}
 
-	s.index = index
+	e.index = index
 	return nil
 }
 
-func (s *RuntimeState) recoverIndex() (*BinaryTree, error) {
-	docIDs, err := ListDocuments(s.db)
+func (e *DocuEngine) recoverIndex() (*BinaryTree, error) {
+	docIDs, err := ListDocuments(e.db)
 	if err != nil {
 		return nil, err
 	}
 	btree := &BinaryTree{nil, 0}
 	for _, docID := range docIDs {
-		doc, ts, err := LoadDocSummary(s.db, docID)
+		doc, ts, err := LoadDocSummary(e.db, docID)
 		if err != nil {
 			return nil, err
 		}
 		btree.InsertDoc(doc, ts)
 	}
-	indexPath := filepath.Join(s.dataFolder, "index.gob")
+	indexPath := filepath.Join(e.dataFolder, "index.gob")
 	err = SaveStruct(indexPath, btree)
 	if err != nil {
 		return nil, err
@@ -106,25 +106,25 @@ func (s *RuntimeState) recoverIndex() (*BinaryTree, error) {
 }
 
 // Load or create DocCounter
-func (s *RuntimeState) loadCounter() error {
+func (e *DocuEngine) loadCounter() error {
 	gob.Register(DocCounter{})
-	dcPath := filepath.Join(s.dataFolder, "docCounter.gob")
+	dcPath := filepath.Join(e.dataFolder, "docCounter.gob")
 
 	docCounter := NewDocCounter()
-	latestTs, err := GetLatestTimestamp(s.db)
+	latestTs, err := GetLatestTimestamp(e.db)
 	if err != nil {
 		return err
 	}
 	if latestTs == 0 {
 		// no documents
-		s.docCounter = docCounter
+		e.docCounter = docCounter
 		return nil
 	}
 
 	err = LoadStruct(dcPath, docCounter)
 	if err != nil {
 		fmt.Println("Error reading docCounter:", err, "- attempting to recover")
-		docCounter, err = s.recoverDocCounter()
+		docCounter, err = e.recoverDocCounter()
 		if err != nil {
 			fmt.Println("DocCounter recovery failed, documents may have been lost:", err)
 			return err
@@ -134,33 +134,33 @@ func (s *RuntimeState) loadCounter() error {
 
 	if docCounter.Timestamp != latestTs {
 		fmt.Println("DocCounter is out of sync with latest changes, recovering")
-		docCounter, err = s.recoverDocCounter()
+		docCounter, err = e.recoverDocCounter()
 		if err != nil {
 			fmt.Println("DocCounter recovery failed, documents may have been lost:", err)
 			return err
 		}
 	}
 
-	s.docCounter = docCounter
+	e.docCounter = docCounter
 	return nil
 }
 
-func (s *RuntimeState) recoverDocCounter() (*DocCounter, error) {
-	docIDs, err := ListDocuments(s.db)
+func (e *DocuEngine) recoverDocCounter() (*DocCounter, error) {
+	docIDs, err := ListDocuments(e.db)
 	if err != nil {
 		return nil, err
 	}
 
 	docCounter := NewDocCounter()
 	for _, docID := range docIDs {
-		doc, ts, err := LoadDocSummary(s.db, docID)
+		doc, ts, err := LoadDocSummary(e.db, docID)
 		if err != nil {
 			return nil, err
 		}
 		docCounter.AddDocument(doc, ts)
 	}
 
-	dcPath := filepath.Join(s.dataFolder, "docCounter.gob")
+	dcPath := filepath.Join(e.dataFolder, "docCounter.gob")
 	err = SaveStruct(dcPath, docCounter)
 	if err != nil {
 		return nil, err
@@ -168,29 +168,29 @@ func (s *RuntimeState) recoverDocCounter() (*DocCounter, error) {
 	return docCounter, nil
 }
 
-func addFile(filePath string, state *RuntimeState) error {
+func (e *DocuEngine) addFile(filePath string) error {
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		return err
 	}
 	text := string(content)
-	addDocument(text, text, filePath, DocType(Text), state)
+	e.addDocument(text, text, filePath, DocType(Text))
 	return nil
 }
 
-func addText(text string, title string, state *RuntimeState) error {
-	err := addDocument(text, text, title, DocType(Text), state)
+func (e *DocuEngine) addText(text string, title string) error {
+	err := e.addDocument(text, text, title, DocType(Text))
 	return err
 
 }
 
-func addURL(url string, state *RuntimeState) error {
+func (e *DocuEngine) addURL(url string) error {
 	title, text := ScrapeText(url)
-	err := addDocument(text, url, title, DocType(URL), state)
+	err := e.addDocument(text, url, title, DocType(URL))
 	return err
 }
 
-func addDocument(text string, identifier string, title string, docType DocType, state *RuntimeState) error {
+func (e *DocuEngine) addDocument(text string, identifier string, title string, docType DocType) error {
 	if title == "" {
 		return errors.New("empty title is not allowed")
 	}
@@ -199,7 +199,7 @@ func addDocument(text string, identifier string, title string, docType DocType, 
 	}
 	ts := time.Now().Unix()
 	docSummary := NewDocSummary(text, identifier, title, docType)
-	rows, err := InsertDocument(state.db, docSummary, text, ts)
+	rows, err := InsertDocument(e.db, docSummary, text, ts)
 	if err != nil {
 		return err
 	}
@@ -208,33 +208,33 @@ func addDocument(text string, identifier string, title string, docType DocType, 
 		return nil
 	}
 
-	state.index.InsertDoc(docSummary, ts)
-	state.docCounter.AddDocument(docSummary, ts)
+	e.index.InsertDoc(docSummary, ts)
+	e.docCounter.AddDocument(docSummary, ts)
 
 	err = SaveStruct(
-		filepath.Join(state.dataFolder, "index.gob"),
-		state.index,
+		filepath.Join(e.dataFolder, "index.gob"),
+		e.index,
 	)
 	if err != nil {
 		return err
 	}
 
 	err = SaveStruct(
-		filepath.Join(state.dataFolder, "docCounter.gob"),
-		state.docCounter,
+		filepath.Join(e.dataFolder, "docCounter.gob"),
+		e.docCounter,
 	)
 	return err
 }
 
-func queryDocument(text string, state *RuntimeState) ([]*SearchResult, error) {
+func (e *DocuEngine) queryDocument(text string) ([]*SearchResult, error) {
 	tokens := Tokenize(text)
-	docIDs := state.index.SearchTokens(tokens)
-	docSummaries, err := LoadDocSummaries(context.Background(), state.db, docIDs...)
+	docIDs := e.index.SearchTokens(tokens)
+	docSummaries, err := LoadDocSummaries(context.Background(), e.db, docIDs...)
 	if err != nil {
 		return nil, err
 	}
 
-	similarities := TFIDFSimilarity(text, state.docCounter, docSummaries...)
+	similarities := TFIDFSimilarity(text, e.docCounter, docSummaries...)
 	return similarities, nil
 }
 

@@ -8,8 +8,8 @@ import (
 
 // App struct
 type App struct {
-	ctx   context.Context
-	state *RuntimeState
+	ctx    context.Context
+	engine *DocuEngine
 }
 
 // NewApp creates a new App application struct
@@ -21,12 +21,12 @@ func NewApp() *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
-	state, err := NewRuntimeState()
+	state, err := NewEngine()
 	check(err)
-	a.state = state
-	err = a.state.loadIndex()
+	a.engine = state
+	err = a.engine.loadIndex()
 	check(err)
-	err = a.state.loadCounter()
+	err = a.engine.loadCounter()
 	check(err)
 }
 
@@ -48,7 +48,7 @@ func (a *App) AddURL(encodedURL string) error {
 	if err != nil {
 		return err
 	}
-	return addURL(content, a.state)
+	return a.engine.addURL(content)
 }
 
 func (a *App) AddText(encodedText string, encodedTitle string) error {
@@ -61,15 +61,15 @@ func (a *App) AddText(encodedText string, encodedTitle string) error {
 	if err != nil {
 		return err
 	}
-	return addText(content, title, a.state)
+	return a.engine.addText(content, title)
 }
 
 // Search a given query in the collection
 func (a *App) Search(text string) ([]*SearchResult, error) {
-	return queryDocument(text, a.state)
+	return a.engine.queryDocument(text)
 }
 
 // Read contents from a raw text file stored in the collection
 func (a *App) ReadTextFile(docID string) (string, error) {
-	return LoadText(a.state.db, docID)
+	return LoadText(a.engine.db, docID)
 }
