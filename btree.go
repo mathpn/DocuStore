@@ -116,7 +116,8 @@ func (n *BinaryNode) rebalance() *BinaryNode {
 }
 
 type BinaryTree struct {
-	Root *BinaryNode
+	Root      *BinaryNode
+	timestamp int64 // timestamp of latest change
 }
 
 func (t *BinaryTree) InsertDoc(doc *DocSummary) {

@@ -18,27 +18,33 @@ type RuntimeState struct {
 	docCounter *DocCounter
 }
 
-func NewRuntimeState() *RuntimeState {
+func NewRuntimeState() (*RuntimeState, error) {
 	gob.Register(DocSummary{})
 	workDir, err := os.Getwd()
-	check(err)
+	if err != nil {
+		return nil, err
+	}
+
 	dataFolder := filepath.Join(workDir, "data")
 	rawFolder := filepath.Join(dataFolder, "raw")
 	err = os.MkdirAll(rawFolder, 0755)
-	check(err)
+	if err != nil {
+		return nil, err
+	}
 
-	db, err := sql.Open("sqlite3", filepath.Join(dataFolder, "storage.db"))
-	check(err)
-	err = createTables(db)
-	check(err)
+	db, err := NewDBConnection(filepath.Join(dataFolder, "storage.db"))
+	if err != nil {
+		return nil, err
+	}
 
-	return &RuntimeState{
+	state := &RuntimeState{
 		dataFolder,
 		rawFolder,
 		db,
 		nil,
 		nil,
 	}
+	return state, nil
 }
 
 // Load or create BTree index
@@ -46,17 +52,37 @@ func (s *RuntimeState) loadIndex() error {
 	gob.Register(BinaryTree{})
 	indexPath := filepath.Join(s.dataFolder, "index.gob")
 
-	index := &BinaryTree{nil}
-	err := LoadStruct(indexPath, &index)
+	index := &BinaryTree{nil, 0}
+	latestTs, err := GetLatestTimestamp(s.db)
 	if err != nil {
-		fmt.Println("Error reading index:", err, " - attempting to recover index")
+		return err
+	}
+	if latestTs == 0 {
+		// no documents
+		s.index = index
+		return nil
+	}
+
+	err = LoadStruct(indexPath, &index)
+	if err != nil {
+		fmt.Println("Error reading BTree index:", err, "- attempting to recover")
 		index, err = s.recoverIndex()
 		if err != nil {
-			fmt.Println("Index recovery failed, all documents are lost!", err)
+			fmt.Println("Index recovery failed, documents may have been lost:", err)
 			return err
 		}
 		fmt.Println("BTree index succesfully recovered")
 	}
+
+	if index.timestamp != latestTs {
+		fmt.Println("BTree index is out of sync with latest changes, recovering")
+		index, err = s.recoverIndex()
+		if err != nil {
+			fmt.Println("BTree index recovery failed, documents may have been lost:", err)
+			return err
+		}
+	}
+
 	s.index = index
 	return nil
 }
@@ -66,7 +92,7 @@ func (s *RuntimeState) recoverIndex() (*BinaryTree, error) {
 	if err != nil {
 		return nil, err
 	}
-	btree := &BinaryTree{nil}
+	btree := &BinaryTree{nil, 0}
 	for _, docID := range docIDs {
 		doc, err := LoadDocSummary(s.db, docID)
 		if err != nil {
@@ -88,16 +114,36 @@ func (s *RuntimeState) loadCounter() error {
 	dcPath := filepath.Join(s.dataFolder, "docCounter.gob")
 
 	docCounter := NewDocCounter()
-	err := LoadStruct(dcPath, docCounter)
+	latestTs, err := GetLatestTimestamp(s.db)
 	if err != nil {
-		fmt.Println("Error reading docCounter:", err, " - attempting to recover")
+		return err
+	}
+	if latestTs == 0 {
+		// no documents
+		s.docCounter = docCounter
+		return nil
+	}
+
+	err = LoadStruct(dcPath, docCounter)
+	if err != nil {
+		fmt.Println("Error reading docCounter:", err, "- attempting to recover")
 		docCounter, err = s.recoverDocCounter()
 		if err != nil {
-			fmt.Println("DocCounter recovery failed, all documents are lost!")
+			fmt.Println("DocCounter recovery failed, documents may have been lost:", err)
 			return err
 		}
 		fmt.Println("docCounter succesfully recovered")
 	}
+
+	if docCounter.timestamp != latestTs {
+		fmt.Println("DocCounter is out of sync with latest changes, recovering")
+		docCounter, err = s.recoverDocCounter()
+		if err != nil {
+			fmt.Println("DocCounter recovery failed, documents may have been lost:", err)
+			return err
+		}
+	}
+
 	s.docCounter = docCounter
 	return nil
 }

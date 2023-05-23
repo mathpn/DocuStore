@@ -104,6 +104,7 @@ type DocCounter struct {
 	nDocs     int
 	DocCounts map[string]int     // number of documents with word
 	idf       map[string]float64 // log of inverse document frequency
+	timestamp int64              // timestamp of latest change
 }
 
 func NewDocCounter() *DocCounter {
@@ -111,6 +112,7 @@ func NewDocCounter() *DocCounter {
 		0,
 		make(map[string]int),
 		make(map[string]float64),
+		0,
 	}
 }
 

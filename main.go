@@ -45,7 +45,8 @@ func runApp() {
 
 func cliInterface() {
 	var err error
-	state := NewRuntimeState()
+	state, err := NewRuntimeState()
+	check(err)
 	err = state.loadIndex()
 	check(err)
 	err = state.loadCounter()
