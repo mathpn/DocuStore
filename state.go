@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 type RuntimeState struct {
@@ -74,7 +75,8 @@ func (s *RuntimeState) loadIndex() error {
 		fmt.Println("BTree index succesfully recovered")
 	}
 
-	if index.timestamp != latestTs {
+	if index.Timestamp != latestTs {
+		fmt.Printf("%+v - %+v\n", index.Timestamp, latestTs)
 		fmt.Println("BTree index is out of sync with latest changes, recovering")
 		index, err = s.recoverIndex()
 		if err != nil {
@@ -94,11 +96,11 @@ func (s *RuntimeState) recoverIndex() (*BinaryTree, error) {
 	}
 	btree := &BinaryTree{nil, 0}
 	for _, docID := range docIDs {
-		doc, err := LoadDocSummary(s.db, docID)
+		doc, ts, err := LoadDocSummary(s.db, docID)
 		if err != nil {
 			return nil, err
 		}
-		btree.InsertDoc(doc)
+		btree.InsertDoc(doc, ts)
 	}
 	indexPath := filepath.Join(s.dataFolder, "index.gob")
 	err = SaveStruct(indexPath, btree)
@@ -135,7 +137,7 @@ func (s *RuntimeState) loadCounter() error {
 		fmt.Println("docCounter succesfully recovered")
 	}
 
-	if docCounter.timestamp != latestTs {
+	if docCounter.Timestamp != latestTs {
 		fmt.Println("DocCounter is out of sync with latest changes, recovering")
 		docCounter, err = s.recoverDocCounter()
 		if err != nil {
@@ -156,11 +158,11 @@ func (s *RuntimeState) recoverDocCounter() (*DocCounter, error) {
 
 	docCounter := NewDocCounter()
 	for _, docID := range docIDs {
-		doc, err := LoadDocSummary(s.db, docID)
+		doc, ts, err := LoadDocSummary(s.db, docID)
 		if err != nil {
 			return nil, err
 		}
-		docCounter.AddDocuments(doc)
+		docCounter.AddDocument(doc, ts)
 	}
 
 	dcPath := filepath.Join(s.dataFolder, "docCounter.gob")
@@ -200,8 +202,9 @@ func addDocument(text string, identifier string, title string, docType DocType, 
 	if text == "" {
 		return errors.New("empty content")
 	}
+	ts := time.Now().Unix()
 	docSummary := NewDocSummary(text, identifier, title, docType)
-	rows, err := InsertDocument(state.db, docSummary, text)
+	rows, err := InsertDocument(state.db, docSummary, text, ts)
 	if err != nil {
 		return err
 	}
@@ -210,8 +213,8 @@ func addDocument(text string, identifier string, title string, docType DocType, 
 		return nil
 	}
 
-	state.index.InsertDoc(docSummary)
-	state.docCounter.AddDocuments(docSummary)
+	state.index.InsertDoc(docSummary, ts)
+	state.docCounter.AddDocument(docSummary, ts)
 
 	err = SaveStruct(
 		filepath.Join(state.dataFolder, "index.gob"),

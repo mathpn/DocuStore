@@ -117,14 +117,15 @@ func (n *BinaryNode) rebalance() *BinaryNode {
 
 type BinaryTree struct {
 	Root      *BinaryNode
-	timestamp int64 // timestamp of latest change
+	Timestamp int64 // timestamp of latest change
 }
 
-func (t *BinaryTree) InsertDoc(doc *DocSummary) {
+func (t *BinaryTree) InsertDoc(doc *DocSummary, timestamp int64) {
 	for token := range doc.TermFreqs {
 		docToken := &docToken{doc.DocID, token}
 		t.insert(docToken)
 	}
+	t.Timestamp = timestamp
 }
 
 // tree rebalancing code adapted from https://appliedgo.net/balancedtree/

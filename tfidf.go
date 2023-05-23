@@ -101,10 +101,10 @@ func getTermFrequency(text string) (map[string]float64, float64) {
 }
 
 type DocCounter struct {
-	nDocs     int
+	NumDocs   int
 	DocCounts map[string]int     // number of documents with word
 	idf       map[string]float64 // log of inverse document frequency
-	timestamp int64              // timestamp of latest change
+	Timestamp int64              // timestamp of latest change
 }
 
 func NewDocCounter() *DocCounter {
@@ -116,18 +116,17 @@ func NewDocCounter() *DocCounter {
 	}
 }
 
-func (d *DocCounter) AddDocuments(DocSummaries ...*DocSummary) {
-	for i := 0; i < len(DocSummaries); i++ {
-		d.nDocs++
-		for token := range DocSummaries[i].TermFreqs {
-			d.DocCounts[token]++
-		}
+func (d *DocCounter) AddDocument(DocSummary *DocSummary, timestamp int64) {
+	d.NumDocs++
+	for token := range DocSummary.TermFreqs {
+		d.DocCounts[token]++
 	}
+	d.Timestamp = timestamp
 }
 
 func (d *DocCounter) calculateIDF() {
 	for token, count := range d.DocCounts {
-		d.idf[token] = math.Log(float64(d.nDocs) / float64(count))
+		d.idf[token] = math.Log(float64(d.NumDocs) / float64(count))
 	}
 }
 
