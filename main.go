@@ -76,14 +76,11 @@ func cliInterface() {
 			fmt.Println("You must provide a query string.")
 			return
 		}
-		// FIXME loop for profiling only, remove later
-		for i := 0; i < 100; i++ {
-			result, err := engine.queryDocument(query)
-			if err != nil {
-				panic(err)
-			}
-			printSearchResults(result)
+		result, err := engine.queryDocument(query)
+		if err != nil {
+			panic(err)
 		}
+		printSearchResults(result)
 	default:
 		fmt.Println("Valid commands: add, query")
 	}

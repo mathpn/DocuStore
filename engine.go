@@ -249,6 +249,9 @@ func printSearchResults(sims []*SearchResult) {
 		}
 		fmt.Printf("Match: %d | Score: %.2f\n", i+1, sim.Score)
 		fmt.Println(sim.Title)
+		if sim.Type == DocType(URL) {
+			fmt.Println(sim.Identifier)
+		}
 		fmt.Println("--------------------------------------------")
 	}
 }
