@@ -16,7 +16,7 @@ import (
 type DocuEngine struct {
 	dataFolder string
 	db         *sql.DB
-	index      *BinaryTree
+	index      *HashmapIndex
 	docCounter *DocCounter
 }
 
@@ -45,10 +45,11 @@ func NewEngine() (*DocuEngine, error) {
 
 // Load or create BTree index
 func (e *DocuEngine) loadIndex() error {
-	gob.Register(BinaryTree{})
+	gob.Register(HashmapIndex{})
 	indexPath := filepath.Join(e.dataFolder, "index.gob")
+	// fmt.Println(indexPath)
 
-	index := &BinaryTree{nil, 0}
+	index := &HashmapIndex{nil, 0}
 	latestTs, err := GetLatestTimestamp(e.db)
 	if err != nil {
 		return err
@@ -84,12 +85,12 @@ func (e *DocuEngine) loadIndex() error {
 	return nil
 }
 
-func (e *DocuEngine) recoverIndex() (*BinaryTree, error) {
+func (e *DocuEngine) recoverIndex() (*HashmapIndex, error) {
 	docIDs, err := ListDocuments(e.db)
 	if err != nil {
 		return nil, err
 	}
-	btree := &BinaryTree{nil, 0}
+	btree := &HashmapIndex{nil, 0}
 	for _, docID := range docIDs {
 		doc, ts, err := LoadDocSummary(e.db, docID)
 		if err != nil {
@@ -98,6 +99,7 @@ func (e *DocuEngine) recoverIndex() (*BinaryTree, error) {
 		btree.InsertDoc(doc, ts)
 	}
 	indexPath := filepath.Join(e.dataFolder, "index.gob")
+	// fmt.Println(indexPath)
 	err = SaveStruct(indexPath, btree)
 	if err != nil {
 		return nil, err
