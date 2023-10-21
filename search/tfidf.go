@@ -5,22 +5,36 @@ import (
 	"sort"
 )
 
-func calculateIDF(counter *DocCounter) map[string]float64 {
-	idf := make(map[string]float64)
-	for token, count := range counter.DocCounts {
-		idf[token] = math.Log(float64(counter.NumDocs)/(1+float64(count))) + 1
-	}
-	return idf
+type tfidfSearcher struct {
+	counter *DocCounter
+	idf     map[string]float64
+	ts      int64
 }
 
-func TFIDFSimilarity(text string, c *DocCounter, docs ...*DocSummary) []*SearchResult {
+func NewTFIDFSearcher(c *DocCounter) Searcher {
+	return &tfidfSearcher{
+		counter: c,
+		idf:     make(map[string]float64),
+	}
+}
+
+func (s *tfidfSearcher) calculateIDF() {
+	if s.ts != s.counter.Ts {
+		for token, count := range s.counter.DocCounts {
+			s.idf[token] = math.Log(float64(s.counter.NumDocs)/(1+float64(count))) + 1
+		}
+		s.ts = s.counter.Ts
+	}
+}
+
+func (s *tfidfSearcher) Search(text string, docs ...*DocSummary) []*SearchResult {
 	termFreqs, queryNorm := getTermFrequency(text)
-	idf := calculateIDF(c)
+	s.calculateIDF()
 	scores := make([]float64, len(docs))
 	for i, docSummary := range docs {
 		for token, queryCount := range termFreqs {
 			refCount := docSummary.TermFreqs[token]
-			factor, ok := idf[token]
+			factor, ok := s.idf[token]
 			if !ok {
 				factor = 1.0
 			}

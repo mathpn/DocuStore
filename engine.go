@@ -20,6 +20,7 @@ type DocuEngine struct {
 	db         *sql.DB
 	index      *HashmapIndex
 	docCounter *search.DocCounter
+	searcher   search.Searcher
 	dataFolder string
 }
 
@@ -45,10 +46,13 @@ func NewEngine() (*DocuEngine, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	searcher := search.NewTFIDFSearcher(docCounter)
 	engine := &DocuEngine{
 		db:         db,
 		index:      index,
 		docCounter: docCounter,
+		searcher:   searcher,
 		dataFolder: dataFolder,
 	}
 	return engine, nil
@@ -141,7 +145,7 @@ func loadCounter(dataFolder string, db *sql.DB) (*search.DocCounter, error) {
 		fmt.Println("docCounter succesfully recovered")
 	}
 
-	if docCounter.Timestamp != latestTs {
+	if docCounter.Ts != latestTs {
 		fmt.Println("DocCounter is out of sync with latest changes, recovering")
 		docCounter, err = recoverDocCounter(dataFolder, db)
 		if err != nil {
@@ -242,7 +246,7 @@ func (e *DocuEngine) QueryDocument(text string) ([]*search.SearchResult, error) 
 		return nil, err
 	}
 
-	similarities := search.TFIDFSimilarity(text, e.docCounter, docSummaries...)
+	similarities := e.searcher.Search(text, docSummaries...)
 	return similarities, nil
 }
 

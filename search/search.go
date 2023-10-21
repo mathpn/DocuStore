@@ -3,7 +3,6 @@ package search
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"math"
 	"regexp"
 	"strings"
 
@@ -61,6 +60,10 @@ func NewDocSummary(text string, identifier string, title string, docType DocType
 	}
 }
 
+type Searcher interface {
+	Search(text string, docs ...*DocSummary) []*SearchResult
+}
+
 func hashDocument(text string) string {
 	hash := sha256.Sum256([]byte(text))
 	hashString := hex.EncodeToString(hash[:])
@@ -103,7 +106,7 @@ type DocCounter struct {
 	DocCounts map[string]int
 	idf       map[string]float64
 	NumDocs   int
-	Timestamp int64
+	Ts        int64
 }
 
 func NewDocCounter() *DocCounter {
@@ -111,7 +114,7 @@ func NewDocCounter() *DocCounter {
 		NumDocs:   0,
 		DocCounts: make(map[string]int),
 		idf:       make(map[string]float64),
-		Timestamp: 0,
+		Ts:        0,
 	}
 }
 
@@ -120,11 +123,5 @@ func (d *DocCounter) AddDocument(DocSummary *DocSummary, timestamp int64) {
 	for token := range DocSummary.TermFreqs {
 		d.DocCounts[token]++
 	}
-	d.Timestamp = timestamp
-}
-
-func (d *DocCounter) calculateIDF() {
-	for token, count := range d.DocCounts {
-		d.idf[token] = math.Log(float64(d.NumDocs)/(1+float64(count))) + 1
-	}
+	d.Ts = timestamp
 }
