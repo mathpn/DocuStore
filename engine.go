@@ -14,10 +14,10 @@ import (
 )
 
 type DocuEngine struct {
-	dataFolder string
 	db         *sql.DB
 	index      *HashmapIndex
 	docCounter *DocCounter
+	dataFolder string
 }
 
 func NewEngine() (*DocuEngine, error) {
@@ -34,39 +34,46 @@ func NewEngine() (*DocuEngine, error) {
 		return nil, err
 	}
 
-	state := &DocuEngine{
-		dataFolder,
-		db,
-		nil,
-		nil,
+	index, err := loadIndex(dataFolder, db)
+	if err != nil {
+		return nil, err
 	}
-	return state, nil
+	docCounter, err := loadCounter(dataFolder, db)
+	if err != nil {
+		return nil, err
+	}
+	engine := &DocuEngine{
+		db:         db,
+		index:      index,
+		docCounter: docCounter,
+		dataFolder: dataFolder,
+	}
+	return engine, nil
 }
 
-// Load or create BTree index
-func (e *DocuEngine) loadIndex() error {
+// Load or create Hashmap inverted index
+func loadIndex(dataFolder string, db *sql.DB) (*HashmapIndex, error) {
 	gob.Register(HashmapIndex{})
-	indexPath := filepath.Join(e.dataFolder, "index.gob")
+	indexPath := filepath.Join(dataFolder, "index.gob")
 	// fmt.Println(indexPath)
 
 	index := &HashmapIndex{nil, 0}
-	latestTs, err := GetLatestTimestamp(e.db)
+	latestTs, err := GetLatestTimestamp(db)
 	if err != nil {
-		return err
+		return index, err
 	}
 	if latestTs == 0 {
 		// no documents
-		e.index = index
-		return nil
+		return index, nil
 	}
 
 	err = LoadStruct(indexPath, &index)
 	if err != nil {
 		fmt.Println("Error reading BTree index:", err, "- attempting to recover")
-		index, err = e.recoverIndex()
+		index, err = recoverIndex(dataFolder, db)
 		if err != nil {
 			fmt.Println("Index recovery failed, documents may have been lost:", err)
-			return err
+			return nil, err
 		}
 		fmt.Println("BTree index succesfully recovered")
 	}
@@ -74,31 +81,29 @@ func (e *DocuEngine) loadIndex() error {
 	if index.Timestamp != latestTs {
 		fmt.Printf("%+v - %+v\n", index.Timestamp, latestTs)
 		fmt.Println("BTree index is out of sync with latest changes, recovering")
-		index, err = e.recoverIndex()
+		index, err = recoverIndex(dataFolder, db)
 		if err != nil {
 			fmt.Println("BTree index recovery failed, documents may have been lost:", err)
-			return err
+			return nil, err
 		}
 	}
-
-	e.index = index
-	return nil
+	return index, nil
 }
 
-func (e *DocuEngine) recoverIndex() (*HashmapIndex, error) {
-	docIDs, err := ListDocuments(e.db)
+func recoverIndex(dataFolder string, db *sql.DB) (*HashmapIndex, error) {
+	docIDs, err := ListDocuments(db)
 	if err != nil {
 		return nil, err
 	}
 	btree := &HashmapIndex{nil, 0}
 	for _, docID := range docIDs {
-		doc, ts, err := LoadDocSummary(e.db, docID)
+		doc, ts, err := LoadDocSummary(db, docID)
 		if err != nil {
 			return nil, err
 		}
 		btree.InsertDoc(doc, ts)
 	}
-	indexPath := filepath.Join(e.dataFolder, "index.gob")
+	indexPath := filepath.Join(dataFolder, "index.gob")
 	// fmt.Println(indexPath)
 	err = SaveStruct(indexPath, btree)
 	if err != nil {
@@ -108,61 +113,59 @@ func (e *DocuEngine) recoverIndex() (*HashmapIndex, error) {
 }
 
 // Load or create DocCounter
-func (e *DocuEngine) loadCounter() error {
+func loadCounter(dataFolder string, db *sql.DB) (*DocCounter, error) {
 	gob.Register(DocCounter{})
-	dcPath := filepath.Join(e.dataFolder, "docCounter.gob")
+	dcPath := filepath.Join(dataFolder, "docCounter.gob")
 
 	docCounter := NewDocCounter()
-	latestTs, err := GetLatestTimestamp(e.db)
+	latestTs, err := GetLatestTimestamp(db)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if latestTs == 0 {
 		// no documents
-		e.docCounter = docCounter
-		return nil
+		return docCounter, nil
 	}
 
 	err = LoadStruct(dcPath, docCounter)
 	if err != nil {
 		fmt.Println("Error reading docCounter:", err, "- attempting to recover")
-		docCounter, err = e.recoverDocCounter()
+		docCounter, err = recoverDocCounter(dataFolder, db)
 		if err != nil {
 			fmt.Println("DocCounter recovery failed, documents may have been lost:", err)
-			return err
+			return nil, err
 		}
 		fmt.Println("docCounter succesfully recovered")
 	}
 
 	if docCounter.Timestamp != latestTs {
 		fmt.Println("DocCounter is out of sync with latest changes, recovering")
-		docCounter, err = e.recoverDocCounter()
+		docCounter, err = recoverDocCounter(dataFolder, db)
 		if err != nil {
 			fmt.Println("DocCounter recovery failed, documents may have been lost:", err)
-			return err
+			return nil, err
 		}
 	}
 
-	e.docCounter = docCounter
-	return nil
+	return docCounter, nil
 }
 
-func (e *DocuEngine) recoverDocCounter() (*DocCounter, error) {
-	docIDs, err := ListDocuments(e.db)
+func recoverDocCounter(dataFolder string, db *sql.DB) (*DocCounter, error) {
+	docIDs, err := ListDocuments(db)
 	if err != nil {
 		return nil, err
 	}
 
 	docCounter := NewDocCounter()
 	for _, docID := range docIDs {
-		doc, ts, err := LoadDocSummary(e.db, docID)
+		doc, ts, err := LoadDocSummary(db, docID)
 		if err != nil {
 			return nil, err
 		}
 		docCounter.AddDocument(doc, ts)
 	}
 
-	dcPath := filepath.Join(e.dataFolder, "docCounter.gob")
+	dcPath := filepath.Join(dataFolder, "docCounter.gob")
 	err = SaveStruct(dcPath, docCounter)
 	if err != nil {
 		return nil, err

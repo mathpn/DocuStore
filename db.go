@@ -149,8 +149,6 @@ func LoadDocSummaries(ctx context.Context, db *sql.DB, docIDs ...string) ([]*Doc
 			},
 		)
 	}
-	// go func() {
-	// 	errs.Wait()
-	// }()
-	return out, errs.Wait()
+	err := errs.Wait()
+	return out, err
 }

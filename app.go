@@ -21,13 +21,11 @@ func NewApp() *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
-	state, err := NewEngine()
-	check(err)
-	a.engine = state
-	err = a.engine.loadIndex()
-	check(err)
-	err = a.engine.loadCounter()
-	check(err)
+	engine, err := NewEngine()
+	if err != nil {
+		panic(err)
+	}
+	a.engine = engine
 }
 
 // Decode base64-encoded input

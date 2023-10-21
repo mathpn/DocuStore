@@ -47,10 +47,6 @@ func cliInterface() {
 	var err error
 	engine, err := NewEngine()
 	check(err)
-	err = engine.loadIndex()
-	check(err)
-	err = engine.loadCounter()
-	check(err)
 
 	cmd := flag.Arg(0)
 	switch cmd {
