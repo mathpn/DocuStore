@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 
+	"DocuStore/scraper"
+
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
@@ -12,12 +14,6 @@ import (
 
 //go:embed all:frontend/dist
 var assets embed.FS
-
-func check(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
 
 func runApp() {
 	// Create an instance of the app structure
@@ -46,7 +42,9 @@ func runApp() {
 func cliInterface() {
 	var err error
 	engine, err := NewEngine()
-	check(err)
+	if err != nil {
+		panic(err)
+	}
 
 	cmd := flag.Arg(0)
 	switch cmd {
@@ -57,13 +55,17 @@ func cliInterface() {
 			fmt.Println("You must provide a valid file path or URL.")
 			return
 		}
-		found := URLRegex.FindString(arg)
+		found := scraper.URLRegex.FindString(arg)
 		if found != "" {
-			err = engine.addURL(arg)
-			check(err)
+			err = engine.AddURL(arg)
+			if err != nil {
+				panic(err)
+			}
 		} else {
 			err = engine.addFile(arg)
-			check(err)
+			if err != nil {
+				panic(err)
+			}
 		}
 	case "query":
 		fmt.Println("querying documents")
@@ -72,7 +74,7 @@ func cliInterface() {
 			fmt.Println("You must provide a query string.")
 			return
 		}
-		result, err := engine.queryDocument(query)
+		result, err := engine.QueryDocument(query)
 		if err != nil {
 			panic(err)
 		}

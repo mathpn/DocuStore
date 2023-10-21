@@ -1,5 +1,7 @@
 package main
 
+import "DocuStore/search"
+
 type docToken struct {
 	docID string
 	token string
@@ -10,7 +12,7 @@ type HashmapIndex struct {
 	Timestamp int64 // timestamp of latest change
 }
 
-func (t *HashmapIndex) InsertDoc(doc *DocSummary, timestamp int64) {
+func (t *HashmapIndex) InsertDoc(doc *search.DocSummary, timestamp int64) {
 	for token := range doc.TermFreqs {
 		docToken := &docToken{doc.DocID, token}
 		t.insert(docToken)

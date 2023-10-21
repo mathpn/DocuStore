@@ -10,18 +10,21 @@ import (
 	"path/filepath"
 	"time"
 
+	"DocuStore/scraper"
+	"DocuStore/search"
+
 	"github.com/adrg/xdg"
 )
 
 type DocuEngine struct {
 	db         *sql.DB
 	index      *HashmapIndex
-	docCounter *DocCounter
+	docCounter *search.DocCounter
 	dataFolder string
 }
 
 func NewEngine() (*DocuEngine, error) {
-	gob.Register(DocSummary{})
+	gob.Register(search.DocSummary{})
 	stateDir := xdg.StateHome
 	dataFolder := filepath.Join(stateDir, "DocuStore")
 	err := os.MkdirAll(dataFolder, 0755)
@@ -113,11 +116,11 @@ func recoverIndex(dataFolder string, db *sql.DB) (*HashmapIndex, error) {
 }
 
 // Load or create DocCounter
-func loadCounter(dataFolder string, db *sql.DB) (*DocCounter, error) {
-	gob.Register(DocCounter{})
+func loadCounter(dataFolder string, db *sql.DB) (*search.DocCounter, error) {
+	gob.Register(search.DocCounter{})
 	dcPath := filepath.Join(dataFolder, "docCounter.gob")
 
-	docCounter := NewDocCounter()
+	docCounter := search.NewDocCounter()
 	latestTs, err := GetLatestTimestamp(db)
 	if err != nil {
 		return nil, err
@@ -150,13 +153,13 @@ func loadCounter(dataFolder string, db *sql.DB) (*DocCounter, error) {
 	return docCounter, nil
 }
 
-func recoverDocCounter(dataFolder string, db *sql.DB) (*DocCounter, error) {
+func recoverDocCounter(dataFolder string, db *sql.DB) (*search.DocCounter, error) {
 	docIDs, err := ListDocuments(db)
 	if err != nil {
 		return nil, err
 	}
 
-	docCounter := NewDocCounter()
+	docCounter := search.NewDocCounter()
 	for _, docID := range docIDs {
 		doc, ts, err := LoadDocSummary(db, docID)
 		if err != nil {
@@ -179,23 +182,23 @@ func (e *DocuEngine) addFile(filePath string) error {
 		return err
 	}
 	text := string(content)
-	e.addDocument(text, text, filePath, DocType(Text))
+	e.addDocument(text, text, filePath, search.DocType(search.Text))
 	return nil
 }
 
-func (e *DocuEngine) addText(text string, title string) error {
-	err := e.addDocument(text, text, title, DocType(Text))
+func (e *DocuEngine) AddText(text string, title string) error {
+	err := e.addDocument(text, text, title, search.DocType(search.Text))
 	return err
 
 }
 
-func (e *DocuEngine) addURL(url string) error {
-	title, text := ScrapeText(url)
-	err := e.addDocument(text, url, title, DocType(URL))
+func (e *DocuEngine) AddURL(url string) error {
+	title, text := scraper.ScrapeText(url)
+	err := e.addDocument(text, url, title, search.DocType(search.URL))
 	return err
 }
 
-func (e *DocuEngine) addDocument(text string, identifier string, title string, docType DocType) error {
+func (e *DocuEngine) addDocument(text string, identifier string, title string, docType search.DocType) error {
 	if title == "" {
 		return errors.New("empty title is not allowed")
 	}
@@ -203,7 +206,7 @@ func (e *DocuEngine) addDocument(text string, identifier string, title string, d
 		return errors.New("empty content")
 	}
 	ts := time.Now().Unix()
-	docSummary := NewDocSummary(text, identifier, title, docType)
+	docSummary := search.NewDocSummary(text, identifier, title, docType)
 	rows, err := InsertDocument(e.db, docSummary, text, ts)
 	if err != nil {
 		return err
@@ -231,19 +234,23 @@ func (e *DocuEngine) addDocument(text string, identifier string, title string, d
 	return err
 }
 
-func (e *DocuEngine) queryDocument(text string) ([]*SearchResult, error) {
-	tokens := Tokenize(text)
+func (e *DocuEngine) QueryDocument(text string) ([]*search.SearchResult, error) {
+	tokens := search.Tokenize(text)
 	docIDs := e.index.SearchTokens(tokens)
 	docSummaries, err := LoadDocSummaries(context.Background(), e.db, docIDs...)
 	if err != nil {
 		return nil, err
 	}
 
-	similarities := TFIDFSimilarity(text, e.docCounter, docSummaries...)
+	similarities := search.TFIDFSimilarity(text, e.docCounter, docSummaries...)
 	return similarities, nil
 }
 
-func printSearchResults(sims []*SearchResult) {
+func (e *DocuEngine) LoadText(docID string) (string, error) {
+	return LoadText(e.db, docID)
+}
+
+func printSearchResults(sims []*search.SearchResult) {
 	fmt.Println("Here are the top 5 matches:")
 	for i, sim := range sims {
 		if sim.Score == 0.0 {
@@ -254,7 +261,7 @@ func printSearchResults(sims []*SearchResult) {
 		}
 		fmt.Printf("Match: %d | Score: %.2f\n", i+1, sim.Score)
 		fmt.Println(sim.Title)
-		if sim.Type == DocType(URL) {
+		if sim.Type == search.DocType(search.URL) {
 			fmt.Println(sim.Identifier)
 		}
 		fmt.Println("--------------------------------------------")

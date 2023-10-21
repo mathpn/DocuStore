@@ -1,4 +1,4 @@
-package main
+package search
 
 import (
 	"crypto/sha256"
@@ -34,19 +34,19 @@ func (t DocType) String() string {
 }
 
 type DocSummary struct {
+	TermFreqs  map[string]float64
 	DocID      string
 	Title      string
-	Type       DocType
 	Identifier string
-	TermFreqs  map[string]float64 // term frequency
-	SquareNorm float64            // squared norm of TermFreqs vector
+	Type       DocType
+	SquareNorm float64
 }
 
 type SearchResult struct {
 	DocID      string
 	Title      string
-	Type       DocType
 	Identifier string
+	Type       DocType
 	Score      float64
 }
 
@@ -101,18 +101,18 @@ func getTermFrequency(text string) (map[string]float64, float64) {
 }
 
 type DocCounter struct {
+	DocCounts map[string]int
+	idf       map[string]float64
 	NumDocs   int
-	DocCounts map[string]int     // number of documents with word
-	idf       map[string]float64 // log of inverse document frequency
-	Timestamp int64              // timestamp of latest change
+	Timestamp int64
 }
 
 func NewDocCounter() *DocCounter {
 	return &DocCounter{
-		0,
-		make(map[string]int),
-		make(map[string]float64),
-		0,
+		NumDocs:   0,
+		DocCounts: make(map[string]int),
+		idf:       make(map[string]float64),
+		Timestamp: 0,
 	}
 }
 
@@ -144,11 +144,11 @@ func TFIDFSimilarity(text string, c *DocCounter, docs ...*DocSummary) []*SearchR
 	for i := 0; i < len(scores); i++ {
 		invNorm := math.Sqrt(1 / (queryNorm*docs[i].SquareNorm + 1e-8))
 		result[i] = &SearchResult{
-			docs[i].DocID,
-			docs[i].Title,
-			docs[i].Type,
-			docs[i].Identifier,
-			math.Sqrt(scores[i] * invNorm),
+			DocID:      docs[i].DocID,
+			Title:      docs[i].Title,
+			Type:       docs[i].Type,
+			Identifier: docs[i].Identifier,
+			Score:      math.Sqrt(scores[i] * invNorm),
 		}
 	}
 	sort.Slice(result, func(i, j int) bool {

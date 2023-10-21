@@ -1,4 +1,4 @@
-package main
+package scraper
 
 import (
 	"bytes"
@@ -31,7 +31,7 @@ func ScrapeText(url string) (string, string) {
 
 	title := doc.Find("title").Text()
 	buffer.WriteString(title + "\n")
-	doc.Find("meta").Each(func(i int, s *goquery.Selection) {
+	doc.Find("meta").Each(func(_ int, s *goquery.Selection) {
 		if name, _ := s.Attr("name"); strings.ToLower(name) == "description" {
 			description, _ := s.Attr("content")
 			buffer.WriteString(description + "\n")
