@@ -265,7 +265,7 @@ func printSearchResults(sims []*search.SearchResult) {
 		}
 		fmt.Printf("Match: %d | Score: %.2f\n", i+1, sim.Score)
 		fmt.Println(sim.Title)
-		if sim.Type == search.DocType(search.URL) {
+		if sim.Type == search.URL.String() {
 			fmt.Println(sim.Identifier)
 		}
 		fmt.Println("--------------------------------------------")

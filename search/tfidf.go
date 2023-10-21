@@ -47,7 +47,7 @@ func (s *tfidfSearcher) Search(text string, docs ...*DocSummary) []*SearchResult
 		result[i] = &SearchResult{
 			DocID:      docs[i].DocID,
 			Title:      docs[i].Title,
-			Type:       docs[i].Type,
+			Type:       docs[i].Type.String(),
 			Identifier: docs[i].Identifier,
 			Score:      math.Sqrt(scores[i] * invNorm),
 		}

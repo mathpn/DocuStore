@@ -3,6 +3,8 @@
         <span v-if="this.expanded" @click="toggleExpandResult" class="search-result-title">
             <b>Title: </b>{{ this.title }}
             <br>
+            <b>Type: </b>{{ this.type }}
+            <br>
             <b>Score: </b>{{ Math.round(this.score * 100) / 100 }}
         </span>
         <span v-else @click="toggleExpandResult" class="search-result-title">

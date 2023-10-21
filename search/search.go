@@ -44,7 +44,7 @@ type SearchResult struct {
 	DocID      string
 	Title      string
 	Identifier string
-	Type       DocType
+	Type       string
 	Score      float64
 }
 
@@ -123,5 +123,7 @@ func (d *DocCounter) AddDocument(DocSummary *DocSummary, timestamp int64) {
 	for token := range DocSummary.TermFreqs {
 		d.DocCounts[token]++
 	}
-	d.Ts = timestamp
+	if timestamp > d.Ts {
+		d.Ts = timestamp
+	}
 }
