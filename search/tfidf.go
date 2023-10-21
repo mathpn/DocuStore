@@ -5,15 +5,26 @@ import (
 	"sort"
 )
 
+func calculateIDF(counter *DocCounter) map[string]float64 {
+	idf := make(map[string]float64)
+	for token, count := range counter.DocCounts {
+		idf[token] = math.Log(float64(counter.NumDocs)/(1+float64(count))) + 1
+	}
+	return idf
+}
+
 func TFIDFSimilarity(text string, c *DocCounter, docs ...*DocSummary) []*SearchResult {
 	termFreqs, queryNorm := getTermFrequency(text)
-	c.calculateIDF() // FIXME move here and cache
+	idf := calculateIDF(c)
 	scores := make([]float64, len(docs))
 	for i, docSummary := range docs {
 		for token, queryCount := range termFreqs {
 			refCount := docSummary.TermFreqs[token]
-			scores[i] += queryCount * refCount * c.idf[token]
-			scores[i] *= c.idf[token]
+			factor, ok := idf[token]
+			if !ok {
+				factor = 1.0
+			}
+			scores[i] += queryCount * refCount * factor
 		}
 	}
 	result := make([]*SearchResult, len(docs))
