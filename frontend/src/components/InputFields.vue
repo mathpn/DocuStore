@@ -86,7 +86,7 @@ export default {
                     console.log("doSearch failed: ", err);
                     this.errorMsg = err;
                     this.error = true;
-                    setTimeout(() => this.error = false, 1000);
+                    setTimeout(() => this.error = false, 2000);
                 })
         },
         resetIsSearched() {
@@ -128,7 +128,7 @@ export default {
                     console.log("addInput failed: ", err);
                     this.errorMsg = err;
                     this.error = true;
-                    setTimeout(() => this.error = false, 1000);
+                    setTimeout(() => this.error = false, 2000);
                 })
                 .finally(() => {
                     this.addingData = false;

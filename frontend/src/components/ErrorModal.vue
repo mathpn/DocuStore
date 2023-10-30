@@ -37,7 +37,7 @@ export default {
     left: 0;
     width: 100%;
     z-index: 998;
-    animation: slideOut 1s linear forwards;
+    animation: slideOut 2s linear forwards;
 }
 
 @keyframes slideOut {
