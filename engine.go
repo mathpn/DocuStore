@@ -103,15 +103,16 @@ func recoverIndex(dataFolder string, db *sql.DB) (*HashmapIndex, error) {
 		return nil, err
 	}
 	btree := &HashmapIndex{nil, 0}
+	var doc *search.DocSummary
+	var ts int64
 	for _, docID := range docIDs {
-		doc, ts, err := LoadDocSummary(db, docID)
+		doc, ts, err = LoadDocSummary(db, docID)
 		if err != nil {
 			return nil, err
 		}
 		btree.InsertDoc(doc, ts)
 	}
 	indexPath := filepath.Join(dataFolder, "index.gob")
-	// fmt.Println(indexPath)
 	err = SaveStruct(indexPath, btree)
 	if err != nil {
 		return nil, err
@@ -164,8 +165,10 @@ func recoverDocCounter(dataFolder string, db *sql.DB) (*search.DocCounter, error
 	}
 
 	docCounter := search.NewDocCounter()
+	var doc *search.DocSummary
+	var ts int64
 	for _, docID := range docIDs {
-		doc, ts, err := LoadDocSummary(db, docID)
+		doc, ts, err = LoadDocSummary(db, docID)
 		if err != nil {
 			return nil, err
 		}
@@ -197,8 +200,11 @@ func (e *DocuEngine) AddText(text string, title string) error {
 }
 
 func (e *DocuEngine) AddURL(url string) error {
-	title, text := scraper.ScrapeText(url)
-	err := e.addDocument(text, url, title, search.DocType(search.URL))
+	data, err := scraper.ScrapeText(url)
+	if err != nil {
+		return err
+	}
+	err = e.addDocument(data.Content, url, data.Title, search.DocType(search.URL))
 	return err
 }
 
