@@ -42,7 +42,7 @@ export default {
             this.expanded = !this.expanded;
         },
         openDocument() {
-            if (this.type == 0) {
+            if (this.type == "URL") {
                 BrowserOpenURL(this.identifier);
             } else {
                 this.$parent.$emit('markdown-doc-id', this.docID);
@@ -90,7 +90,6 @@ export default {
     font-size: 11pt;
     display: inline-block;
     padding: 10px 20px;
-    background-color: #169ba0;
     color: #fff;
 }
 </style>
