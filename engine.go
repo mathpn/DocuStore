@@ -47,7 +47,10 @@ func NewEngine() (*DocuEngine, error) {
 		return nil, err
 	}
 
-	searcher := search.NewTFIDFSearcher(docCounter)
+	searcher, err := search.NewTFIDFSearcher(docCounter)
+	if err != nil {
+		return nil, err
+	}
 	engine := &DocuEngine{
 		db:         db,
 		index:      index,

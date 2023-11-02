@@ -37,7 +37,6 @@ type DocSummary struct {
 	Title      string
 	Identifier string
 	Type       DocType
-	SquareNorm float64
 }
 
 type SearchResult struct {
@@ -49,14 +48,13 @@ type SearchResult struct {
 }
 
 func NewDocSummary(text string, identifier string, title string, docType DocType) *DocSummary {
-	termFreqs, norm := getTermFrequency(text)
+	termFreqs := getTermFrequency(text)
 	return &DocSummary{
 		DocID:      hashDocument(identifier),
 		Title:      title,
 		Identifier: identifier,
 		Type:       docType,
 		TermFreqs:  termFreqs,
-		SquareNorm: norm,
 	}
 }
 
@@ -75,8 +73,9 @@ func Tokenize(text string) []string {
 	text = strings.ToLower(text)
 	text = asciiRegex.ReplaceAllString(text, "")
 	tokens := strings.Fields(text)
+	var t string
 	for i := 0; i < len(tokens); i++ {
-		t := tokens[i]
+		t = tokens[i]
 		if len(t) > maxTokenLength {
 			t = t[:maxTokenLength]
 			tokens[i] = t
@@ -85,26 +84,22 @@ func Tokenize(text string) []string {
 	return tokens
 }
 
-func getTermFrequency(text string) (map[string]float64, float64) {
+func getTermFrequency(text string) map[string]float64 {
 	tokens := Tokenize(text)
 	termCounts := make(map[string]int)
 	nTokens := float64(len(tokens))
 	for _, token := range tokens {
 		termCounts[token]++
 	}
-	termFreqs := make(map[string]float64)
-	var squareNorm float64
+	termFreqs := make(map[string]float64, len(termCounts))
 	for token, count := range termCounts {
-		freq := float64(count) / nTokens
-		squareNorm += freq * freq
-		termFreqs[token] = freq
+		termFreqs[token] = float64(count) / nTokens
 	}
-	return termFreqs, squareNorm
+	return termFreqs
 }
 
 type DocCounter struct {
 	DocCounts map[string]int
-	idf       map[string]float64
 	NumDocs   int
 	Ts        int64
 }
@@ -113,7 +108,6 @@ func NewDocCounter() *DocCounter {
 	return &DocCounter{
 		NumDocs:   0,
 		DocCounts: make(map[string]int),
-		idf:       make(map[string]float64),
 		Ts:        0,
 	}
 }
