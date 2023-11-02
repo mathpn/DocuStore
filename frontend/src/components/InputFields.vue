@@ -13,7 +13,7 @@
         <button v-else id="content-button" class="search-button" @click="addInput">Register</button>
     </div>
     <div class="search-bar">
-        <input v-debounce:300ms="doSearch" @keydown.enter="doSearch" @input="resetIsSearched" type="text"
+        <input v-debounce:50ms="doSearch" @keydown.enter="doSearch" @input="resetIsSearched" type="text"
             class="search-input" id="search-box" ref="searchInput" placeholder="Search" v-model="searchField" />
     </div>
 </template>
