@@ -14,13 +14,15 @@ import (
 	"DocuStore/search"
 
 	"github.com/adrg/xdg"
+	"github.com/wailsapp/wails/v2/pkg/logger"
 )
 
 type DocuEngine struct {
+	searcher   search.Searcher
+	log        logger.Logger
 	db         *sql.DB
 	index      *HashmapIndex
 	docCounter *search.DocCounter
-	searcher   search.Searcher
 	dataFolder string
 }
 
@@ -28,6 +30,8 @@ func NewEngine() (*DocuEngine, error) {
 	gob.Register(search.DocSummary{})
 	stateDir := xdg.StateHome
 	dataFolder := filepath.Join(stateDir, "DocuStore")
+	log := logger.NewDefaultLogger()
+	log.Debug(fmt.Sprintf("dataFolder: %s", dataFolder))
 	err := os.MkdirAll(dataFolder, 0755)
 	if err != nil {
 		return nil, err
@@ -38,11 +42,11 @@ func NewEngine() (*DocuEngine, error) {
 		return nil, err
 	}
 
-	index, err := loadIndex(dataFolder, db)
+	index, err := loadIndex(dataFolder, db, log)
 	if err != nil {
 		return nil, err
 	}
-	docCounter, err := loadCounter(dataFolder, db)
+	docCounter, err := loadCounter(dataFolder, db, log)
 	if err != nil {
 		return nil, err
 	}
@@ -57,15 +61,16 @@ func NewEngine() (*DocuEngine, error) {
 		docCounter: docCounter,
 		searcher:   searcher,
 		dataFolder: dataFolder,
+		log:        log,
 	}
 	return engine, nil
 }
 
 // Load or create Hashmap inverted index
-func loadIndex(dataFolder string, db *sql.DB) (*HashmapIndex, error) {
+func loadIndex(dataFolder string, db *sql.DB, log logger.Logger) (*HashmapIndex, error) {
 	gob.Register(HashmapIndex{})
 	indexPath := filepath.Join(dataFolder, "index.gob")
-	// fmt.Println(indexPath)
+	log.Debug(fmt.Sprintf("indexPath: %s", indexPath))
 
 	index := &HashmapIndex{nil, 0}
 	latestTs, err := GetLatestTimestamp(db)
@@ -73,29 +78,30 @@ func loadIndex(dataFolder string, db *sql.DB) (*HashmapIndex, error) {
 		return index, err
 	}
 	if latestTs == 0 {
-		// no documents
+		log.Debug("no documents in DB")
 		return index, nil
 	}
 
 	err = LoadStruct(indexPath, &index)
 	if err != nil {
-		fmt.Println("Error reading BTree index:", err, "- attempting to recover")
+		log.Warning(fmt.Sprintf("Error reading BTree index, attempting to recover: %s", err))
 		index, err = recoverIndex(dataFolder, db)
 		if err != nil {
-			fmt.Println("Index recovery failed, documents may have been lost:", err)
+			log.Error(fmt.Sprintf("BTree index recovery failed, documents may have been lost: %s", err))
 			return nil, err
 		}
-		fmt.Println("BTree index succesfully recovered")
+		log.Warning("BTree index succesfully recovered")
 	}
 
 	if index.Timestamp != latestTs {
-		fmt.Printf("%+v - %+v\n", index.Timestamp, latestTs)
-		fmt.Println("BTree index is out of sync with latest changes, recovering")
+		log.Warning("BTree index is out of sync with latest changes, recovering")
+		log.Debug(fmt.Sprintf("timestamps: %+v - %+v\n", index.Timestamp, latestTs))
 		index, err = recoverIndex(dataFolder, db)
 		if err != nil {
-			fmt.Println("BTree index recovery failed, documents may have been lost:", err)
+			log.Error(fmt.Sprintf("BTree index recovery failed, documents may have been lost: %s", err))
 			return nil, err
 		}
+		log.Warning("BTree index succesfully recovered")
 	}
 	return index, nil
 }
@@ -124,7 +130,7 @@ func recoverIndex(dataFolder string, db *sql.DB) (*HashmapIndex, error) {
 }
 
 // Load or create DocCounter
-func loadCounter(dataFolder string, db *sql.DB) (*search.DocCounter, error) {
+func loadCounter(dataFolder string, db *sql.DB, log logger.Logger) (*search.DocCounter, error) {
 	gob.Register(search.DocCounter{})
 	dcPath := filepath.Join(dataFolder, "docCounter.gob")
 
@@ -140,22 +146,23 @@ func loadCounter(dataFolder string, db *sql.DB) (*search.DocCounter, error) {
 
 	err = LoadStruct(dcPath, docCounter)
 	if err != nil {
-		fmt.Println("Error reading docCounter:", err, "- attempting to recover")
+		log.Warning(fmt.Sprintf("Error reading DocCounter, attempting to recover: %s", err))
 		docCounter, err = recoverDocCounter(dataFolder, db)
 		if err != nil {
-			fmt.Println("DocCounter recovery failed, documents may have been lost:", err)
+			log.Error(fmt.Sprintf("DocCounter recovery failed, documents may have been lost: %s", err))
 			return nil, err
 		}
-		fmt.Println("docCounter succesfully recovered")
+		log.Warning("DocCounter succesfully recovered")
 	}
 
 	if docCounter.Ts != latestTs {
-		fmt.Println("DocCounter is out of sync with latest changes, recovering")
+		log.Warning("DocCounter is out of sync with latest changes, recovering")
 		docCounter, err = recoverDocCounter(dataFolder, db)
 		if err != nil {
-			fmt.Println("DocCounter recovery failed, documents may have been lost:", err)
+			log.Error(fmt.Sprintf("DocCounter recovery failed, documents may have been lost: %s", err))
 			return nil, err
 		}
+		log.Warning("DocCounter succesfully recovered")
 	}
 
 	return docCounter, nil
@@ -203,7 +210,7 @@ func (e *DocuEngine) AddText(text string, title string) error {
 }
 
 func (e *DocuEngine) AddURL(url string) error {
-	data, err := scraper.ScrapeText(url)
+	data, err := scraper.ScrapeText(url, e.log)
 	if err != nil {
 		return err
 	}
@@ -225,7 +232,7 @@ func (e *DocuEngine) addDocument(text string, identifier string, title string, d
 		return err
 	}
 	if rows == 0 {
-		fmt.Println("Document is already in the collection")
+		e.log.Info("Document is already in the collection")
 		return nil
 	}
 
@@ -249,6 +256,7 @@ func (e *DocuEngine) addDocument(text string, identifier string, title string, d
 
 func (e *DocuEngine) QueryDocument(text string) ([]*search.SearchResult, error) {
 	tokens := search.Tokenize(text)
+	e.log.Debug(fmt.Sprintf("searching with tokens: %v", tokens))
 	docIDs := e.index.SearchTokens(tokens)
 	docSummaries, err := LoadDocSummaries(context.Background(), e.db, docIDs...)
 	if err != nil {

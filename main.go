@@ -8,6 +8,7 @@ import (
 	"DocuStore/scraper"
 
 	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/logger"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 )
@@ -27,6 +28,8 @@ func runApp() {
 		WindowStartState:   options.Normal,
 		Frameless:          false,
 		MinWidth:           300,
+		LogLevel:           logger.DEBUG,
+		LogLevelProduction: logger.WARNING,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},

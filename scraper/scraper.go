@@ -2,13 +2,14 @@ package scraper
 
 import (
 	"bytes"
+	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"regexp"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/wailsapp/wails/v2/pkg/logger"
 	"golang.org/x/net/html"
 )
 
@@ -19,7 +20,7 @@ type ScrapeData struct {
 	Content string
 }
 
-func ScrapeText(url string) (*ScrapeData, error) {
+func ScrapeText(url string, log logger.Logger) (*ScrapeData, error) {
 	buffer := bytes.NewBufferString("")
 	response, err := http.Get(strings.TrimSpace(url))
 	if err != nil {
@@ -82,7 +83,7 @@ func ScrapeText(url string) (*ScrapeData, error) {
 
 		switch tt {
 		case html.ErrorToken:
-			log.Print(err)
+			log.Error(fmt.Sprintf("bad HTML token: %s", token))
 		case html.StartTagToken, html.SelfClosingTagToken:
 			enter = false
 

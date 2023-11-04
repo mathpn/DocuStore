@@ -7,6 +7,8 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 )
 
+const CACHE_SIZE = 1024
+
 type tfidfSearcher struct {
 	counter *DocCounter
 	idf     map[string]float64
@@ -15,7 +17,7 @@ type tfidfSearcher struct {
 }
 
 func NewTFIDFSearcher(c *DocCounter) (Searcher, error) {
-	cache, err := lru.New[string, float64](1024)
+	cache, err := lru.New[string, float64](CACHE_SIZE)
 	if err != nil {
 		return nil, err
 	}
@@ -33,6 +35,14 @@ func (s *tfidfSearcher) calculateIDF() {
 		}
 		s.ts = s.counter.Ts
 	}
+}
+
+func (s *tfidfSearcher) getCachedNorm(doc *DocSummary) float64 {
+	norm, ok := s.cache.Get(doc.DocID)
+	if ok {
+		return norm
+	}
+	return s.computeNorm(doc)
 }
 
 func (s *tfidfSearcher) computeNorm(doc *DocSummary) float64 {
@@ -68,12 +78,8 @@ func (s *tfidfSearcher) Search(text string, docs ...*DocSummary) []*SearchResult
 	}
 
 	var norm, refCount float64
-	var ok bool
 	for i, doc := range docs {
-		norm, ok = s.cache.Get(doc.DocID)
-		if !ok {
-			norm = s.computeNorm(doc)
-		}
+		norm = s.getCachedNorm(doc)
 		docNorms[i] = norm
 		for token, value := range termFreqs {
 			refCount = doc.TermFreqs[token]
