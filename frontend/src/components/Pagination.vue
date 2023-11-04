@@ -49,12 +49,13 @@ export default {
     list-style: none;
     display: flex;
     padding: 0;
+    margin-top: -5px;
 }
 
 .pagination li {
     cursor: pointer;
-    padding: 0.5rem 1rem;
-    margin: 0.2rem;
+    padding: 0.25rem 0.5rem;
+    margin: 0.1rem;
     border: 1px solid #ccc;
     border-radius: 5px;
     user-select: none;
@@ -66,13 +67,7 @@ export default {
 }
 
 .page-button {
-    cursor: pointer;
-    padding: 0.5rem 1rem;
-    margin: 0.2rem;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    user-select: none;
-    min-width: 40px;
+    min-width: 20px;
     text-align: center;
 }
 </style>

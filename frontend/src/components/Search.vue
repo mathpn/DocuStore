@@ -21,7 +21,7 @@ export default {
             searchResults: [],
             pageResults: [],
             page: 1,
-            resultsPerPage: 10,
+            resultsPerPage: 8,
         };
     },
     mounted() {
@@ -54,6 +54,6 @@ export default {
 .search-results {
     display: flex;
     flex-direction: column;
-    margin-top: 20px;
+    margin-top: 0px;
 }
 </style>
