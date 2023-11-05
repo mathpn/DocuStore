@@ -10,9 +10,9 @@ I was tired of sifting through browser favorites, searching for that one elusive
 
 DocuStore also provides support for Markdown documents. You can conveniently store your own content for future reference. DocuStore also renders Markdown directly within the app.
 
-## Example screenshot
+## Search Demo
 
-![Example screenshot](https://github.com/mathpn/DocuStore/raw/main/screenshots/sample_screenshot.png?raw=true)
+![GIF showing a search demo](https://github.com/mathpn/DocuStore/raw/main/assets/search_demo.gif?raw=true)
 
 ## Getting Started
 
