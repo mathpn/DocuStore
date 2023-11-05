@@ -3,6 +3,8 @@
         <span v-if="this.expanded" @click="toggleExpandResult" class="search-result-title">
             <b>Title: </b>{{ this.title }}
             <br>
+            <b>Type: </b>{{ this.type }}
+            <br>
             <b>Score: </b>{{ Math.round(this.score * 100) / 100 }}
         </span>
         <span v-else @click="toggleExpandResult" class="search-result-title">
@@ -40,7 +42,7 @@ export default {
             this.expanded = !this.expanded;
         },
         openDocument() {
-            if (this.type == 0) {
+            if (this.type == "URL") {
                 BrowserOpenURL(this.identifier);
             } else {
                 this.$parent.$emit('markdown-doc-id', this.docID);
@@ -88,7 +90,6 @@ export default {
     font-size: 11pt;
     display: inline-block;
     padding: 10px 20px;
-    background-color: #169ba0;
     color: #fff;
 }
 </style>

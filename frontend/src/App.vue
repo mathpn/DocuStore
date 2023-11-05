@@ -30,7 +30,7 @@ export default {
           console.log("loadText failed: ", err);
           this.errorMsg = err;
           this.error = true;
-          setTimeout(() => this.error = false, 1000);
+          setTimeout(() => this.error = false, 2000);
         })
     }
   },

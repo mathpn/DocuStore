@@ -6,6 +6,8 @@ import (
 	"database/sql"
 	"encoding/gob"
 
+	"DocuStore/search"
+
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/sync/errgroup"
 )
@@ -28,7 +30,7 @@ func createTables(db *sql.DB) error {
 	return err
 }
 
-func InsertDocument(db *sql.DB, docSummary *DocSummary, content string, timestamp int64) (int64, error) {
+func InsertDocument(db *sql.DB, docSummary *search.DocSummary, content string, timestamp int64) (int64, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	tx, err := db.BeginTx(ctx, nil)
@@ -49,7 +51,7 @@ func InsertDocument(db *sql.DB, docSummary *DocSummary, content string, timestam
 	return rows, err
 }
 
-func insertDocTransaction(tx *sql.Tx, docSummary *DocSummary, content string, timestamp int64) (int64, error) {
+func insertDocTransaction(tx *sql.Tx, docSummary *search.DocSummary, content string, timestamp int64) (int64, error) {
 	var buffer bytes.Buffer
 	var err error
 	encoder := gob.NewEncoder(&buffer)
@@ -113,7 +115,7 @@ func LoadText(db *sql.DB, docID string) (string, error) {
 	return content, nil
 }
 
-func LoadDocSummary(db *sql.DB, docID string) (*DocSummary, int64, error) {
+func LoadDocSummary(db *sql.DB, docID string) (*search.DocSummary, int64, error) {
 	row := db.QueryRow("SELECT summary, timestamp FROM documents WHERE doc_id = ?", docID)
 	var blob []byte
 	var ts int64
@@ -123,14 +125,14 @@ func LoadDocSummary(db *sql.DB, docID string) (*DocSummary, int64, error) {
 	}
 	buffer := bytes.NewBuffer(blob)
 	decoder := gob.NewDecoder(buffer)
-	docSummary := DocSummary{}
+	docSummary := search.DocSummary{}
 	decoder.Decode(&docSummary)
 	return &docSummary, ts, err
 }
 
-func LoadDocSummaries(ctx context.Context, db *sql.DB, docIDs ...string) ([]*DocSummary, error) {
+func LoadDocSummaries(ctx context.Context, db *sql.DB, docIDs ...string) ([]*search.DocSummary, error) {
 	errs, ctx := errgroup.WithContext(ctx)
-	out := make([]*DocSummary, len(docIDs))
+	out := make([]*search.DocSummary, len(docIDs))
 	for i := 0; i < len(docIDs); i++ {
 		current := i
 		errs.Go(
@@ -149,8 +151,6 @@ func LoadDocSummaries(ctx context.Context, db *sql.DB, docIDs ...string) ([]*Doc
 			},
 		)
 	}
-	// go func() {
-	// 	errs.Wait()
-	// }()
-	return out, errs.Wait()
+	err := errs.Wait()
+	return out, err
 }

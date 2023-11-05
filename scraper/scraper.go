@@ -1,37 +1,43 @@
-package main
+package scraper
 
 import (
 	"bytes"
+	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"regexp"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/wailsapp/wails/v2/pkg/logger"
 	"golang.org/x/net/html"
 )
 
 var URLRegex = regexp.MustCompile(`^htt(p|ps)://(.*)(\s|$)`)
 
-func ScrapeText(url string) (string, string) {
+type ScrapeData struct {
+	Title   string
+	Content string
+}
+
+func ScrapeText(url string, log logger.Logger) (*ScrapeData, error) {
 	buffer := bytes.NewBufferString("")
 	response, err := http.Get(strings.TrimSpace(url))
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	resBody, err := io.ReadAll(response.Body)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(resBody))
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	title := doc.Find("title").Text()
 	buffer.WriteString(title + "\n")
-	doc.Find("meta").Each(func(i int, s *goquery.Selection) {
+	doc.Find("meta").Each(func(_ int, s *goquery.Selection) {
 		if name, _ := s.Attr("name"); strings.ToLower(name) == "description" {
 			description, _ := s.Attr("content")
 			buffer.WriteString(description + "\n")
@@ -77,7 +83,7 @@ func ScrapeText(url string) (string, string) {
 
 		switch tt {
 		case html.ErrorToken:
-			log.Fatal(err)
+			log.Error(fmt.Sprintf("bad HTML token: %s", token))
 		case html.StartTagToken, html.SelfClosingTagToken:
 			enter = false
 
@@ -100,7 +106,8 @@ func ScrapeText(url string) (string, string) {
 			}
 		}
 	}
-	return title, buffer.String()
+	result := &ScrapeData{Title: title, Content: buffer.String()}
+	return result, nil
 }
 
 // func main() {

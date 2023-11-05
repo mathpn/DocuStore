@@ -13,7 +13,7 @@
         <button v-else id="content-button" class="search-button" @click="addInput">Register</button>
     </div>
     <div class="search-bar">
-        <input v-debounce:300ms="doSearch" @keydown.enter="doSearch" @input="resetIsSearched" type="text"
+        <input v-debounce:50ms="doSearch" @keydown.enter="doSearch" @input="resetIsSearched" type="text"
             class="search-input" id="search-box" ref="searchInput" placeholder="Search" v-model="searchField" />
     </div>
 </template>
@@ -86,7 +86,7 @@ export default {
                     console.log("doSearch failed: ", err);
                     this.errorMsg = err;
                     this.error = true;
-                    setTimeout(() => this.error = false, 1000);
+                    setTimeout(() => this.error = false, 2000);
                 })
         },
         resetIsSearched() {
@@ -128,7 +128,7 @@ export default {
                     console.log("addInput failed: ", err);
                     this.errorMsg = err;
                     this.error = true;
-                    setTimeout(() => this.error = false, 1000);
+                    setTimeout(() => this.error = false, 2000);
                 })
                 .finally(() => {
                     this.addingData = false;

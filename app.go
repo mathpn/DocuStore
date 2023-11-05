@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/base64"
 	"strings"
+
+	"DocuStore/search"
 )
 
 // App struct
@@ -21,13 +23,11 @@ func NewApp() *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
-	state, err := NewEngine()
-	check(err)
-	a.engine = state
-	err = a.engine.loadIndex()
-	check(err)
-	err = a.engine.loadCounter()
-	check(err)
+	engine, err := NewEngine()
+	if err != nil {
+		panic(err)
+	}
+	a.engine = engine
 }
 
 // Decode base64-encoded input
@@ -48,7 +48,7 @@ func (a *App) AddURL(encodedURL string) error {
 	if err != nil {
 		return err
 	}
-	return a.engine.addURL(content)
+	return a.engine.AddURL(content)
 }
 
 func (a *App) AddText(encodedText string, encodedTitle string) error {
@@ -61,15 +61,15 @@ func (a *App) AddText(encodedText string, encodedTitle string) error {
 	if err != nil {
 		return err
 	}
-	return a.engine.addText(content, title)
+	return a.engine.AddText(content, title)
 }
 
 // Search a given query in the collection
-func (a *App) Search(text string) ([]*SearchResult, error) {
-	return a.engine.queryDocument(text)
+func (a *App) Search(text string) ([]*search.SearchResult, error) {
+	return a.engine.QueryDocument(text)
 }
 
 // Read contents from a raw text file stored in the collection
 func (a *App) ReadTextFile(docID string) (string, error) {
-	return LoadText(a.engine.db, docID)
+	return a.engine.LoadText(docID)
 }
